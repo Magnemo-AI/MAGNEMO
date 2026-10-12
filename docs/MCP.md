@@ -48,10 +48,16 @@ Diagnostics go to stderr; stdout is pure JSON-RPC.
 `stage` puts a note in the review queue. If the note is clean (Sentinel is not holding it) and the client said at
 `initialize` that it can put a form to its user, the server sends the client one MCP elicitation request:
 
-> Your agent wrote something down.
-> *the note's title, and the first line of its body*
-> Written by *the seat* · *partition/store*
-> Approve it as memory?   **Yes** · No · Later
+```text
+Your agent wrote something down.
+
+<the note's title>
+<the first line of its body>
+
+Written by <the seat> · <partition>/<store>
+
+Approve it as memory?    Yes · No · Later
+```
 
 The client draws that in its own window and sends back what the person chose. **The model is not on that path.** It
 does not see the request, and none of its four tools answers it. Yes promotes the note, No rejects it, and anything
