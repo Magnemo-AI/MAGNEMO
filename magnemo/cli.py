@@ -120,14 +120,14 @@ def cmd_review(a):
                 who, ran_by = _yes_check(g, who, "review", n.id)
             if ans == "p":
                 try:
-                    g.promote(n.id, who, "approved in review", ran_by=ran_by)
+                    g.promote(n.id, who, "approved in review", ran_by=ran_by, answered_by="terminal")
                 except ValueError as e:
                     print(f"  {e}")                # tainted or held: read it, clear it, then yes
                     break
                 print(f"  ✓ PROMOTED — canonical in {n.partition}/{n.store}")
                 break
             if ans == "r":
-                g.reject(n.id, who, why, ran_by=ran_by)
+                g.reject(n.id, who, why, ran_by=ran_by, answered_by="terminal")
                 print("  ✗ REJECTED — recorded to ledger")
                 break
             if ans == "s":
@@ -238,7 +238,7 @@ def cmd_yes(a):
         targets = [n for n in q if not _held(n) and not _alert(n)][:1]
     for n in targets:
         try:
-            g.promote(n.id, by, reason, ran_by=ran_by)
+            g.promote(n.id, by, reason, ran_by=ran_by, answered_by="terminal")
         except ValueError as e:                    # tainted or held: the yes waits for `magnemo clear`
             print(str(e))
             sys.exit(2)
@@ -257,21 +257,21 @@ def cmd_no(a):
     g = _gov(a.vault)
     n = _pick(g, a.fragment)
     by, ran_by = _yes_check(g, a.by, "no", n.id)
-    g.reject(n.id, by, a.reason, ran_by=ran_by)
+    g.reject(n.id, by, a.reason, ran_by=ran_by, answered_by="terminal")
     print(f"✗ REJECTED {n.id} — recorded to ledger · by {by} · ran_by {ran_by}")
 
 
 def cmd_promote(a):
     g = _gov(a.vault)
     by, ran_by = _yes_check(g, a.by, "promote", a.note_id)
-    n = g.promote(a.note_id, by, a.reason or "", ran_by=ran_by)
+    n = g.promote(a.note_id, by, a.reason or "", ran_by=ran_by, answered_by="terminal")
     print(f"PROMOTED {n.id} → {n.partition}/{n.store} · by {by} · ran_by {ran_by}")
 
 
 def cmd_reject(a):
     g = _gov(a.vault)
     by, ran_by = _yes_check(g, a.by, "reject", a.note_id)
-    g.reject(a.note_id, by, a.reason, ran_by=ran_by)
+    g.reject(a.note_id, by, a.reason, ran_by=ran_by, answered_by="terminal")
     print(f"REJECTED {a.note_id} (reason recorded) · by {by} · ran_by {ran_by}")
 
 
@@ -730,7 +730,7 @@ def cmd_cleartaint(a, verb="cleartaint"):
     g = _gov(a.vault)
     nid = _find(g, a.note_id).id
     by, ran_by = _yes_check(g, a.by, verb, nid)
-    n = g.clear_taint(nid, by, a.reason, ran_by=ran_by)
+    n = g.clear_taint(nid, by, a.reason, ran_by=ran_by, answered_by="terminal")
     print(f"taint cleared on {n.id} — lineage trusted again · by {by} · ran_by {ran_by}")
 
 

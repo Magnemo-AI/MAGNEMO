@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.6.8 — THE YES CHECK
+## 0.6.8 — THE YES, ASKED IN THE CHAT · THE YES CHECK
+- **The yes is one click where you already are.** When an agent stages a clean note through the MCP server and the
+  client can put a form to its user (MCP elicitation), Magnemo asks the client to ask you: the note's first line, who
+  wrote it, "Approve it as memory?" Yes promotes it, No rejects it, anything else leaves it staged. The agent is not
+  on that path: it does not see the question and has no tool that answers it. Promotion is still not an MCP tool.
+- **Where the answer came from is on the record.** Every promotion and rejection carries `answered_by`:
+  `elicitation:<client and version>` or `terminal`.
+- **An accepted answer in under 300 ms is refused and logged** (`answered_by: refused:too-fast`). A client with
+  nobody at it, which lets go of the question at once, is not an attempt: the note waits, and the tool's answer says
+  where the yes is. `MAGNEMO_ASK=off` stops the asking altogether.
+- **A client that cannot ask** is told once that the note waits for the person's own `magnemo yes`.
+- The first-run paste ends at a restart: the tools load when the client starts, and the first memory is approved
+  in the chat. docs/MCP.md has the table of clients, with what was seen.
+- The server now answers a protocol revision it does not speak with the newest it does (2025-11-25), not an echo.
 - **Breaking, and on purpose: a `magnemo yes` that an agent or a script ran in 0.6.7 is refused in 0.6.8 (exit 3).**
   If a pipeline, a hook or an agent's shell runs `magnemo yes`, `no`, `clear` or `promote` for you, it now stops with
   one line and writes nothing to memory. The yes is yours: type it in a terminal.

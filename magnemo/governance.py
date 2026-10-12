@@ -185,18 +185,19 @@ class Governance:
         chest.notify(self.vault, "receipt")    # THE CHEST (#129): a receipt resolved with an outcome
         return touched
 
-    def clear_taint(self, note_id: str, reviewer: str, reason: str, ran_by: str | None = None) -> Note:
+    def clear_taint(self, note_id: str, reviewer: str, reason: str, ran_by: str | None = None, answered_by: str | None = None) -> Note:
         """Keyholder-only: clear taint on a note after verification."""
         n = self.vault.read(note_id)
         old = n.taint
         n.taint = ""
         n.body += f"\n\n> taint '{old}' CLEARED by {reviewer} on {now_iso()}: {reason}"
         self.vault.rewrite(n)
-        self.ledger.record("memory.cleartaint", "approved", reviewer, note_id, reason, **({"ran_by": ran_by} if ran_by else {}))
+        self.ledger.record("memory.cleartaint", "approved", reviewer, note_id, reason, **({"ran_by": ran_by} if ran_by else {}),
+                           **({"answered_by": answered_by} if answered_by else {}))
         return n
 
     # ---------------- keyholder-facing (CLI only; never an MCP tool) ----------------
-    def promote(self, note_id: str, reviewer: str, reason: str = "", ran_by: str | None = None) -> Note:
+    def promote(self, note_id: str, reviewer: str, reason: str = "", ran_by: str | None = None, answered_by: str | None = None) -> Note:
         """`ran_by` (P-54, the two-yes law): the yes is the keyholder's (`reviewer`); the hand
         that ran the command is on the record too, as an appended ledger field."""
         note = self.vault.read(note_id)
@@ -221,7 +222,8 @@ class Governance:
                 pass  # superseded target already gone; link remains in frontmatter
         self.vault._place_canonical(note)
         self.ledger.record("memory.promote", "approved", reviewer, note_id, reason,
-                           **({"ran_by": ran_by} if ran_by else {}))
+                           **({"ran_by": ran_by} if ran_by else {}),
+                           **({"answered_by": answered_by} if answered_by else {}))   # the surface the answer came through: elicitation:<client> · terminal
         self._render(note, reviewer)
         # P-02: a promoted candidate is a verified success for its author in `stage` — unless Sentinel caught it.
         # A secret or an instruction-shaped line that a keyholder read, cleared and kept is a catch, not labor:
@@ -269,7 +271,7 @@ class Governance:
                            prior_sha256=prior, new_sha256=_h.sha256(data).hexdigest(),
                            archived=(_os.path.relpath(archived, self.vault.root) if archived else None))
 
-    def reject(self, note_id: str, reviewer: str, reason: str, ran_by: str | None = None) -> Note:
+    def reject(self, note_id: str, reviewer: str, reason: str, ran_by: str | None = None, answered_by: str | None = None) -> Note:
         note = self.vault.read(note_id)
         if note.status != "staged":
             raise ValueError(f"{note_id} is not staged (status={note.status})")
@@ -282,7 +284,8 @@ class Governance:
         with open(path, "w") as f:
             f.write(note.to_markdown())
         self.ledger.record("memory.promote", "rejected", reviewer, note_id, reason,
-                           **({"ran_by": ran_by} if ran_by else {}))
+                           **({"ran_by": ran_by} if ran_by else {}),
+                           **({"answered_by": answered_by} if answered_by else {}))   # the surface the answer came through: elicitation:<client> · terminal
         # P-02: a rejection is a recorded failure for the author in `stage` — rejections teach.
         from . import trust
         trust.record(self.vault, note.author, "stage", "failure", by=reviewer,

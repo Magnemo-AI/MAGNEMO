@@ -36,6 +36,7 @@ class TestTheYesIsSaidAsItIs(unittest.TestCase):
         self.assertIn("It is a check on the hand, not a", limits); self.assertNotIn("not checked yet", limits)
         self.assertIn("Promotion is not an MCP tool", limits)
         self.assertIn("KNOWN_LIMITS.md", read(ROOT, "README.md").split("Agents get four MCP tools. Promotion is not one of them.")[1][:400])
+        self.assertIn("the command line is the other door", read(ROOT, "docs", "MCP.md"))            # the CLI's door is said once, in the manual
         self.assertIn("the yes check is a check on the hand, not a credential", read(ROOT, "SECURITY.md"))
         self.assertIn("names a listed person passes — an agent with your shell and your terminal is still you", limits)   # the honest hole, last
 

@@ -13,6 +13,18 @@ of them is a roadmap item, not a surprise left for you to find.
   not a credential: a process that allocates its own TTY, clears
   `MAGNEMO_AGENT` and names a listed person passes — an agent with your shell
   and your terminal is still you.
+- **The gate is on what is kept, not on what is written.** It stops a wrong
+  thing from becoming memory without a person; it does not stop a wrong
+  thing from being written. Reading the note before you say yes is the
+  part no tool does for you.
+- **The question in the chat is drawn by your client, not by Magnemo.** The
+  server asks the client to ask you (MCP elicitation) and takes the
+  client's answer. The agent has no tool that answers it. A client set up
+  to answer for you, by a hook or a harness, can: Magnemo refuses an answer
+  that comes back in under 300 ms and logs it, and that catches only the
+  crude case. Every yes says which surface it came through. Today the
+  dialog is tested in one client, and only as far as a run with nobody at
+  it; `docs/MCP.md` has the table.
 - **Beta software.** The engine runs its maker's company daily, but you are
   early. Expect rough edges in exactly the places this file names.
 - **One client is tested.** Claude Code. Every other client's block in the

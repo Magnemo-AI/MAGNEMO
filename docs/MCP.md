@@ -43,6 +43,50 @@ Diagnostics go to stderr; stdout is pure JSON-RPC.
 
 ---
 
+## The yes: asked in the chat, answered by the person
+
+`stage` puts a note in the review queue. If the note is clean (Sentinel is not holding it) and the client said at
+`initialize` that it can put a form to its user, the server sends the client one MCP elicitation request:
+
+> Your agent wrote something down.
+> *the note's title, and the first line of its body*
+> Written by *the seat* · *partition/store*
+> Approve it as memory?   **Yes** · No · Later
+
+The client draws that in its own window and sends back what the person chose. **The model is not on that path.** It
+does not see the request, and none of its four tools answers it. Yes promotes the note, No rejects it, and anything
+else (Later, a declined or dismissed dialog, no answer in two minutes) leaves it staged. The ledger line for a
+promotion or a rejection carries `answered_by`, the surface the answer came through:
+`elicitation:claude-code 2.1.296` · `terminal`.
+
+| Client | Seen | Says it can ask | What happened |
+|---|---|---|---|
+| Claude Code, a person at it | not run yet | | The drill needs a person to click; it is the next one run. |
+| Claude Code, run with nobody at it (`claude -p`) | 2.1.296, Oct 12 2026 | yes (form and url) | It let go of the question in 5 ms. Magnemo left the note staged and said where the yes is. |
+| Claude desktop app | untested | | |
+| Cursor | untested | | |
+| VS Code | untested | | |
+
+A client that does not say it can ask is told once, in the `stage` result, that the note waits, and where the
+person's yes is: **the command line is the other door.** `magnemo yes <id>` is the person's own command. It needs
+their own terminal and a name the vault lists, and it refuses an agent's shell
+([KNOWN_LIMITS.md](../KNOWN_LIMITS.md)). This is the one place these docs send anyone there.
+
+For a harness with nobody at it:
+
+- `MAGNEMO_ASK=off` on the server: it never asks, and every note waits.
+- Or leave it on and have the harness dismiss the request. In Claude Code that is an `Elicitation` hook that exits 2.
+  A dismissed or declined request is never read as a No.
+- An accepted answer that arrives in under 300 ms is refused and logged (`judgment.refused`, `answered_by:
+  refused:too-fast`): it was not read by a person. A harness that waits longer and then accepts is not caught by
+  this; `answered_by` on the ledger is what shows where a yes came from.
+
+The server speaks the `initialize` handshake (protocol revisions up to 2025-11-25). A client on the 2026-07-28
+revision probes first and falls back to it, as Claude Code 2.1.296 was seen to do. On that newer revision the same
+question travels a different way (an input request inside the tool's result); the server does not speak it yet.
+
+---
+
 ## The tools
 
 ### `retrieve(query, scope?, budget?, k?)`

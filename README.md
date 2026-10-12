@@ -4,6 +4,8 @@
 
 Magnemo is a memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes memory until you approve it, and every memory shows who wrote it and who approved it.
 
+When your agent writes something down, Magnemo asks you in the chat. One click.
+
 [![tests](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml/badge.svg)](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml)
 
 ## The one paste
@@ -15,12 +17,12 @@ Set up Magnemo in this project:
 2. Initialize the vault: magnemo init
 3. Register the MCP server: run magnemo mount — it writes this project's MCP config itself.
 4. Verify: run magnemo doctor and confirm everything passes.
-5. Stage the first memory: one line on what this project is, using magnemo stage. Show me the note id.
-6. Then tell me the exact command to approve it. After I approve, run magnemo bootpack and tell me what you remember — then remind me to restart you, so the memory mounts for every session after this one.
+5. Then ask me to restart you, so Magnemo's tools load, and to say this when you are back: "Use Magnemo to remember what this project is."
 If anything fails, show me what went wrong and fix it if you can.
 ```
 
-You'll know it worked — your AI will tell you who it is now.
+After the restart, say it: **Use Magnemo to remember what this project is.** Your agent writes one line down, and
+Magnemo asks you in the chat to approve it. One click. Then ask what it remembers.
 
 **For builders.** Magnemo is an MCP server with four tools — `retrieve`, `stage`,
 `bootpack`, `handoff` — and a CLI for your side: review, promote, reject.
@@ -172,7 +174,7 @@ Anything that speaks MCP over stdio mounts the same way. The remote door (ChatGP
 
 ## Agents draft, people keep — the one rule
 Agents get four MCP tools. Promotion is not one of them.
-The CLI is the other door: a yes there comes from an interactive terminal and a name the vault lists, and an agent's command is refused. Not a credential; [KNOWN_LIMITS.md](KNOWN_LIMITS.md) says what that does not stop.
+The yes is yours: Magnemo asks you in the chat, and your answer never passes through the agent. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) says what that does and does not stop; [docs/MCP.md](docs/MCP.md) has the clients it works in.
 
 | Actor  | Door                | Can do |
 |--------|---------------------|--------|

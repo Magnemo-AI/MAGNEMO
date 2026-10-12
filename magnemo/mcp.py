@@ -8,8 +8,15 @@ bound to existing magnemo code (nothing reimplemented here):
   bootpack(scope?, class?)           → bootpack.generate   the v0.3 boot pack (worker | partner)
   handoff(usage, trigger, cut?)      → handoff.record      boundary telemetry + staged handoff note
 
-Promotion is NOT a tool — it is the keyholder's act, always: it stays theirs, via the CLI. There is
-no shell, no eval, no file tool — least privilege is the surface itself.
+Promotion is NOT a tool — it is the keyholder's act, always. There is no shell, no eval, no file tool — least
+privilege is the surface itself.
+
+THE DIALOG YES. When `stage` puts a clean note in the queue and the client said it can put a form to its user (MCP
+elicitation), the server asks the client to ask the person: the note's first line, who wrote it, "Approve it as
+memory?" The client draws the question in its own window; the person clicks; the client answers the server. The
+model is not on that path: it never sees the question and has no tool that answers it. Yes promotes, No rejects,
+anything else leaves the note staged. An answer that comes back faster than a person can read (under 300 ms) is
+refused and logged. A client that cannot ask is told once where the yes is instead.
 
 Configuration (env):
   MAGNEMO_VAULT       path to the vault root                         (required)
@@ -17,11 +24,13 @@ Configuration (env):
   MAGNEMO_PARTITIONS  comma list this agent may WRITE to             (default: all)
   MAGNEMO_SCOPE       comma list this agent may READ from            (default: all)
                     retrieve/bootpack scope must fall inside it — the scope wall.
+  MAGNEMO_ASK         "off": never ask in the chat (a harness with no person at it)   (default: ask where the client can)
+  MAGNEMO_ASK_SECONDS how long a question waits for its answer before the note is left for later   (default 120)
 
 Run:  MAGNEMO_VAULT=./vault python -m magnemo.mcp
 """
 from __future__ import annotations
-import os, sys, json
+import os, sys, json, re
 from .transport import Server
 from .config import env
 from .vault import PARTITIONS, STORES
@@ -34,6 +43,11 @@ TOOL_NAMES = ("retrieve", "stage", "bootpack", "handoff")
 DEFAULT_BUDGET = 4000      # bytes of served payload per retrieve, unless the caller says otherwise
 MAX_BUDGET = 32000         # hard ceiling — a budget above this is clamped and the clamp is logged
 SNIPPET_CHARS = 240        # "snippet" rendition: per-note body excerpt length
+ASK_SECONDS = 120          # how long THE DIALOG YES waits for the person before the note is left for later
+TOO_FAST_S = 0.3           # an answer inside 300 ms of the question was not read by a person: refused, logged
+ANSWERS = ("Yes", "No", "Later")
+DIALOG_SCHEMA = {"type": "object", "properties": {"answer": {"type": "string", "title": "Approve it as memory?",
+                                                              "enum": list(ANSWERS), "default": "Yes"}}}
 
 
 def tools_spec(vault=None) -> list:
@@ -291,6 +305,7 @@ class MemoryServer(Server):
                 tags.append(DUP_TAG)
             n.tags = ",".join(tags)
             self.vault.rewrite(n)
+        said = self.dialog_yes(n, sv)                    # THE DIALOG YES: the client asks the person; the model is not on that path
         nbytes = len(n.to_markdown().encode("utf-8"))
         foresight.log_cost(self.vault, "stage", nbytes, {
             "via": "mcp", "id": n.id, "agent": author, "partition": part, "store": store,
@@ -310,9 +325,78 @@ class MemoryServer(Server):
                                  "taint beside an ALERT note; retrieve will not serve it until a keyholder clears it."}
                      .get(sv["verdict"], "")
                      + (" " if sv["verdict"] else "")
-                     + "Awaits KEYHOLDER review: magnemo yes (or magnemo review). "
-                       "Not canonical; will not appear in retrieve until promoted."),
+                     + (said["note"] or ("Awaits the keyholder's review. Not canonical; will not appear in retrieve until promoted."))),
+            "dialog": said["dialog"],
         }, indent=1)
+
+    # ---------------- THE DIALOG YES ----------------
+    def client_label(self) -> str:
+        name = re.sub(r"[^\w .@/+-]", "", str(self.client.get("name", "")))[:60].strip() or "unknown client"
+        ver = re.sub(r"[^\w .+-]", "", str(self.client.get("version", "")))[:30].strip()
+        return (name + " " + ver).strip()
+
+    def dialog_yes(self, n, sv) -> dict:
+        """Ask the person, through the client, whether this staged note becomes memory. Returns {"dialog", "note"}:
+        what happened in a word, and the sentence the tool result carries. The note is changed only by the person's
+        own Yes or No; every other outcome leaves it staged."""
+        from .config import load_config
+        waits = ("It waits for the keyholder's yes. Not canonical; will not appear in retrieve until promoted.")
+        if n.status != "staged" or n.taint or sv.get("verdict"):
+            return {"dialog": "not asked: Sentinel is holding this note", "note": ""}
+        if (env("ASK", "") or "").strip().lower() in ("off", "0", "no", "false"):
+            return {"dialog": "not asked: MAGNEMO_ASK is off", "note": waits}
+        def other_door(why):
+            """Said once a session, in plain words: the chat could not carry the question, and where the yes is instead."""
+            first = not getattr(self, "_pointed", False)
+            self._pointed = True
+            if first:
+                sys.stderr.write("[magnemo.mcp] %s (%s): notes wait for `magnemo yes`\n" % (why, self.client_label()))
+            return ("%s, so the note waits. Their yes is theirs to give: `magnemo yes %s`, typed by them. Tell them a note "
+                    "is waiting; do not run it for them (it is refused)." % (why[0].upper() + why[1:], n.id[-8:])) if first else waits
+
+        if not self.can_ask():
+            return {"dialog": "not asked: this client cannot ask in the chat", "note": other_door("this client cannot ask the person in the chat")}
+        cfg = load_config(self.vault.root)
+        humans = (cfg.get("trust") or {}).get("humans") or []
+        who = humans[0] if humans else "founder"
+        first_line = next((ln.strip() for ln in n.body.split("\n") if ln.strip()), "")
+        message = ("Your agent wrote something down.\n\n%s\n%s\n\nWritten by %s · %s/%s\n\nApprove it as memory?" % (
+            n.title[:160], (first_line[:240] + ("…" if len(first_line) > 240 else "")) if first_line != n.title else "",
+            n.author, n.partition, n.store)).replace("\n\n\n", "\n\n")
+        try:
+            seconds = float(env("ASK_SECONDS", "") or ASK_SECONDS)
+        except ValueError:
+            seconds = ASK_SECONDS
+        result, took, why = self.ask("elicitation/create", {"mode": "form", "message": message, "requestedSchema": DIALOG_SCHEMA}, seconds)
+        label = "elicitation:" + self.client_label()
+        if result is None:
+            return {"dialog": "asked; no answer (%s)" % why, "note": "The person was asked in the chat and has not answered. " + waits}
+        action = str(result.get("action", "")).lower()
+        content = result.get("content") if isinstance(result.get("content"), dict) else {}
+        answer = str(content.get("answer", "Yes" if action == "accept" else "")).strip().capitalize()
+        if took < TOO_FAST_S and action != "accept":      # a client with nobody at it (a headless run) lets go of the question at once: not an answer, not an attempt
+            return {"dialog": "asked; nobody was there to answer (%s in %d ms)" % (action or "no action", int(took * 1000)),
+                    "note": other_door("this client had nobody at it to ask")}
+        if took < TOO_FAST_S:                             # a yes or a no faster than a person reads: a harness answering in code does not pass as one
+            try:
+                self.gov.ledger.record("judgment.refused", "refused", self.agent, n.id,
+                                       "the dialog was answered in %d ms: faster than a person can read it" % int(took * 1000),
+                                       **{"class": "yes" if (action == "accept" and answer == "Yes") else "catch", "door": "dialog", "catch": "dialog",
+                                          "answered_by": "refused:too-fast", "client": self.client_label(), "ms": int(took * 1000), "action": action})
+            except Exception:
+                pass
+            return {"dialog": "refused: answered too fast to be a person (%d ms)" % int(took * 1000),
+                    "note": "The chat's answer came back too fast to be a person's and was refused. " + waits}
+        ran_by = "mcp:" + self.agent
+        if action == "accept" and answer == "Yes":
+            self.gov.promote(n.id, who, "approved in the chat", ran_by=ran_by, answered_by=label)
+            n.status = "canonical"
+            return {"dialog": "yes", "note": "The person approved it in the chat. It is canonical now."}
+        if action == "accept" and answer == "No":
+            self.gov.reject(n.id, who, "declined in the chat", ran_by=ran_by, answered_by=label)
+            n.status = "rejected"
+            return {"dialog": "no", "note": "The person said no in the chat. The note is rejected and on the ledger."}
+        return {"dialog": "later", "note": "The person left it for later. " + waits}
 
     # ---------------- bootpack ----------------
     def t_bootpack(self, a):

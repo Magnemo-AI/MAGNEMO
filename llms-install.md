@@ -12,7 +12,8 @@ markdown files in a folder the user owns. Needs Python 3.11 or newer.
    Windsurf, Cline, Continue, Gemini CLI, Codex CLI and Zed. For Cline: `cline_mcp_settings.json`, the `mcpServers`
    block from the README, `disabled: false`.
 4. Verify: `magnemo doctor` must end in `0 fail`. It checks Python, the vault, the config, the ledger and the mount.
-5. Tell the user: memory is written to the vault's `_staging/`, and a note becomes canon when `magnemo yes` (or
-   `magnemo review`) is run. Leave that command to the user: the agent drafts, the person keeps.
+5. Tell the user: what you write with the `stage` tool waits in the vault's `_staging/` until they approve it. Where
+   the client can, Magnemo asks them in the chat. Where it cannot, the note waits for them, and the tool's answer says
+   where their yes is. The approval is never yours to give or to run: the agent drafts, the person keeps.
 
 No API key, no account, no token. The four tools are `retrieve`, `stage`, `bootpack`, `handoff`.
