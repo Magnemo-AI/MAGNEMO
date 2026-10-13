@@ -1,15 +1,29 @@
 # Magnemo
+**Governed Memory for AI Agents. Sessions die. The Memory doesn't.**
 
-**Tools gave your agent hands. MCP gave it a nervous system. Magnemo gives it a brain.**
-
-Magnemo is a memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes memory until you approve it, and every memory shows who wrote it and who approved it.
+Magnemo is a Memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.
 
 When your agent writes something down, Magnemo asks you in the chat. One click.
 
+[![PyPI](https://img.shields.io/pypi/v/magnemo)](https://pypi.org/project/magnemo/)
+[![downloads](https://img.shields.io/pypi/dm/magnemo)](https://pypi.org/project/magnemo/)
 [![tests](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml/badge.svg)](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml)
+[![license](https://img.shields.io/pypi/l/magnemo)](LICENSE)
+[![stars](https://img.shields.io/github/stars/Magnemo-AI/magnemo)](https://github.com/Magnemo-AI/magnemo/stargazers)
+[![MCP registry](https://img.shields.io/badge/MCP_registry-ai.magnemo%2Fmagnemo-blue)](https://registry.modelcontextprotocol.io/?q=magnemo)
 
-## The one paste
-Open Claude Code in any of your project folders, and paste this. (Its `magnemo mount` step writes `.mcp.json`, the file Claude Code reads. In Cursor, Windsurf or another client, use the block for your client under "Install in your client".)
+[Site](https://magnemo.ai) · [Manual](docs/MCP.md) · [Changelog](CHANGELOG.md) · [Known limits](KNOWN_LIMITS.md)
+
+## Install in one paste
+In three lines:
+
+```bash
+pip install magnemo      # Python 3.11 or newer
+magnemo init             # makes the vault: a folder of plain files
+magnemo mount            # writes .mcp.json, the file Claude Code reads
+```
+
+Or let your agent do it. Open Claude Code in any of your project folders, and paste this. (Its `magnemo mount` step writes `.mcp.json`, the file Claude Code reads. In Cursor, Windsurf or another client, use the block for your client under "Install in your client".)
 
 ```text
 Set up Magnemo in this project:
@@ -23,6 +37,24 @@ If anything fails, show me what went wrong and fix it if you can.
 
 After the restart, say it: **Use Magnemo to remember what this project is.** Your agent writes one line down, and
 Magnemo asks you in the chat to approve it. One click. Then ask what it remembers.
+
+## Works with
+One server, the same in every client. Tested where it says so; the rest follow each client's own docs.
+
+| Client | Tested | How |
+|---|---|---|
+| Claude Code | yes: Oct 12, 2026, Claude Code 2.1.296. The four tools, and the question in the chat: one click approved a note. | `magnemo mount`, or `claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-mcp` |
+| Claude Desktop | untested | open `magnemo-0.6.8.mcpb` from the latest release |
+| Cursor | untested | the Add to Cursor link below, or `.cursor/mcp.json` |
+| VS Code | untested | `.vscode/mcp.json` |
+| Windsurf | untested | `~/.codeium/windsurf/mcp_config.json` |
+| Cline | untested | `cline_mcp_settings.json` |
+| Continue | untested | `~/.continue/config.yaml` |
+| Gemini CLI | untested | `~/.gemini/settings.json` |
+| Codex CLI | untested | `~/.codex/config.toml` |
+| Zed | untested | `settings.json` → `context_servers` |
+
+Each client's exact block is under "Install in your client". Listed on the official MCP registry (`ai.magnemo/magnemo`), PyPI, Glama, mcpservers.org and awesome-mcp-servers.
 
 **For builders.** Magnemo is an MCP server with four tools — `retrieve`, `stage`,
 `bootpack`, `handoff` — and a CLI for your side: review, promote, reject.
@@ -44,11 +76,11 @@ promote it, and every boot thereafter serves it back verbatim.
 
 ## Install in your client
 One server, said ten ways. Every block below is the same thing: `uvx magnemo-mcp` with `MAGNEMO_VAULT` pointing at
-the folder your memory lives in (make one with `magnemo init ./vault`). Tested on this Mac where it says so;
+the folder your Memory lives in (make one with `magnemo init ./vault`). Tested on this Mac where it says so;
 the rest is from each client's own docs and marked untested — corrections welcome, open an issue.
 
-**Claude Code** — tested: a Claude Code session mounts the server, lists the four tools and calls them (last run
-Oct 4, 2026: Claude Code 2.1.289, `magnemo-mcp` 0.6.7).
+**Claude Code** — tested: a Claude Code session mounts the server, lists the four tools and calls them, and draws
+the question in the chat (last run Oct 12, 2026: Claude Code 2.1.296, the 0.6.8 server).
 ```bash
 claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-mcp
 ```
@@ -195,7 +227,7 @@ Every note is markdown with provenance frontmatter (author, written, source,
 status, reviewed_by, supersedes, strength). **Provenance is the file format.**
 
 ## Privacy
-Your memory lives on your computer, in plain files you can open. No network calls of its own. Add a backup remote and it pushes there, nowhere else.
+Your Memory lives on your computer, in plain files you can open. No network calls of its own. Add a backup remote and it pushes there, nowhere else.
 The precise version: the package imports no network module, and `magnemo doctor` scans for one every time it runs. If you add a backup destination, the engine runs `git push` to it. The full page: https://magnemo.ai/privacy
 
 ## Guarantees (Phase 1 — Governed Recall)

@@ -96,6 +96,8 @@ class TestD1TheDialogAppearsAndOneClickPromotes(Case):
         self.assertEqual(p["requestedSchema"], {"type": "object", "properties": {"answer": {"type": "string", "title": "Approve it as memory?",
                                                                                            "enum": ["Yes", "No", "Later"], "default": "Yes"}}})
         self.assertEqual((r["dialog"], r["status"]), ("yes", "canonical")); self.assertIn("approved it in the chat", r["note"])
+        self.assertEqual(r["path"], "ops/knowledge/%s.md" % r["staged"])        # the result says where the file is now (found in the founder's drill, Oct 12: it said _staging/)
+        self.assertTrue(os.path.exists(os.path.join(self.d, r["path"]))); self.assertFalse(os.path.exists(os.path.join(self.d, "_staging", r["staged"] + ".md")))
         self.assertEqual(self.status(r["staged"]), "canonical")
         e = self.ledger("memory.promote")[-1]
         self.assertEqual((e["verdict"], e["actor"], e["subject"], e["ran_by"], e["answered_by"], e["detail"]),
@@ -115,7 +117,8 @@ class TestD1TheDialogAppearsAndOneClickPromotes(Case):
         for n, answer in enumerate(({"action": "accept", "content": {"answer": "Later"}}, {"action": "decline"}, {"action": "cancel"})):
             c.stage(dict(NOTE, title="Another fact %d" % n, body="A different body, number %d." % n))
             q, r = self.asked(c, **answer)
-            self.assertEqual((r["dialog"], r["status"], self.status(r["staged"])), ("later", "staged", "staged"), answer)   # a decline is not a no: only the person's own No rejects
+            self.assertEqual((r["dialog"], r["status"], self.status(r["staged"])), ("later", "staged", "staged"), answer)
+            self.assertEqual(r["path"], "_staging/%s.md" % r["staged"]); self.assertTrue(os.path.exists(os.path.join(self.d, r["path"])))   # a decline is not a no: only the person's own No rejects
         self.assertEqual(len(self.ledger("memory.promote")), 1)
 
     def test_the_client_is_named_as_it_named_itself_and_cannot_smuggle_text_into_the_ledger(self):

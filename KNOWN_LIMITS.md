@@ -23,8 +23,8 @@ of them is a roadmap item, not a surprise left for you to find.
   to answer for you, by a hook or a harness, can: Magnemo refuses an answer
   that comes back in under 300 ms and logs it, and that catches only the
   crude case. Every yes says which surface it came through. Today the
-  dialog is tested in one client, and only as far as a run with nobody at
-  it; `docs/MCP.md` has the table.
+  dialog has been seen in one client, Claude Code; `docs/MCP.md` has the
+  table.
 - **Beta software.** The engine runs its maker's company daily, but you are
   early. Expect rough edges in exactly the places this file names.
 - **One client is tested.** Claude Code. Every other client's block in the

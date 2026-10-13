@@ -67,7 +67,7 @@ promotion or a rejection carries `answered_by`, the surface the answer came thro
 
 | Client | Seen | Says it can ask | What happened |
 |---|---|---|---|
-| Claude Code, a person at it | not run yet | | The drill needs a person to click; it is the next one run. |
+| Claude Code, a person at it | 2.1.296, Oct 12 2026 | yes (the dialog was drawn in the chat) | The agent staged one note; the person pressed Yes; the note was promoted 9 seconds after it was written. The ledger line: `approved`, actor `founder`, `ran_by: mcp:drill-seat`, `answered_by: elicitation:claude-code 2.1.296`. |
 | Claude Code, run with nobody at it (`claude -p`) | 2.1.296, Oct 12 2026 | yes (form and url) | It let go of the question in 5 ms. Magnemo left the note staged and said where the yes is. |
 | Claude desktop app | untested | | |
 | Cursor | untested | | |

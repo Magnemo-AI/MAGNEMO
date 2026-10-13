@@ -23,7 +23,11 @@ class TestTheWords(unittest.TestCase):
 
     def test_the_action_is_said_in_the_one_sentence(self):
         self.assertIn(SENTENCE, self.top)
-        self.assertLess(self.top.index(SENTENCE), self.top.index("## The one paste"))   # above the paste: the first screen
+        self.assertLess(self.top.index(SENTENCE), self.top.index("## Install in one paste"))   # above the paste: the first screen
+        self.assertTrue(self.readme.startswith("# Magnemo\n**Governed Memory for AI Agents. Sessions die. The Memory doesn't.**\n\nMagnemo is a Memory for your AI, kept on your computer in plain files."))   # the founder's lines, Oct 12
+        self.assertIn("nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.", self.top)
+        self.assertLess(self.top.index("pip install magnemo"), self.top.index("Set up Magnemo in this project:"))   # three lines before the paste
+        self.assertIn("## Works with", self.top)
         self.assertIn("Magnemo asks you in the chat to approve it. One click.", self.top)
 
     def test_the_paste_no_longer_asks_for_a_command_to_approve(self):

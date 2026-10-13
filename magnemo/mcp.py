@@ -312,7 +312,8 @@ class MemoryServer(Server):
             "salience": n.salience, "dup_of": dup["id"] if dup else "",
             "taint": bool(n.taint)})
         return json.dumps({
-            "staged": n.id, "status": n.status, "path": f"_staging/{n.id}.md",
+            "staged": n.id, "status": n.status,
+            "path": f"{n.partition}/{n.store}/{n.id}.md" if n.status == "canonical" else f"_staging/{n.id}.md",   # where the file is now: a yes in the chat moves it
             "salience": n.salience, "salience_components": json.loads(n.salience_components or "{}"),
             "duplicate_of": dup["id"] if dup else None,
             "duplicate_similarity": round(dup["sim"], 4) if dup else None,
