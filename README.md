@@ -1,5 +1,5 @@
 # Magnemo
-**Governed Memory for AI Agents. Sessions die. The Memory doesn't.**
+**The Memory MCP. Your AI remembers. You keep what matters.**
 
 Magnemo is a Memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.
 
