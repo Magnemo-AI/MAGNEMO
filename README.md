@@ -75,7 +75,7 @@ Their pages: Mem0 [overview](https://docs.mem0.ai/open-source/overview), [platfo
 **Tested on** every push, on Python 3.9, 3.11 and 3.12: 300 tests, as of Oct 12, 2026 ([the runs](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml)).
 
 ## What's new
-- **0.6.8** · October 2026 · The yes is asked in the chat, one click. A yes that an agent or a script runs is refused.
+- **0.6.8** · Oct 13, 2026 · The yes is asked in the chat, one click. A yes that an agent or a script runs is refused.
 - **0.6.7** · Oct 2, 2026 · `magnemo review` labels held and flagged notes. A note Sentinel caught earns its author no trust.
 - **0.6.6** · Oct 1, 2026 · No traceback reaches a person. The short id works on every command. `yes` waits for `clear`.
 
