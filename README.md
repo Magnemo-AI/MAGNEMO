@@ -1,7 +1,7 @@
 # Magnemo
 **The Memory MCP. Your AI remembers. You keep what matters.**
 
-Magnemo is a Memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.
+Magnemo is Memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.
 
 When your agent writes something down, Magnemo asks you in the chat. One click.
 
@@ -29,11 +29,13 @@ Or let your agent do it. Open Claude Code in any of your project folders, and pa
 Set up Magnemo in this project:
 1. Install it: pip install magnemo. It needs Python 3.11 or newer. If pip can't find it, install uv (curl -LsSf https://astral.sh/uv/install.sh | sh) and then run: uv tool install magnemo
 2. Initialize the vault: magnemo init
-3. Register the MCP server: run magnemo mount — it writes this project's MCP config itself.
+3. Register the MCP server: run magnemo mount — it adds Magnemo to this project's MCP config and keeps any servers already there.
 4. Verify: run magnemo doctor and confirm everything passes.
 5. Then ask me to restart you, so Magnemo's tools load, and to say this when you are back: "Use Magnemo to remember what this project is."
 If anything fails, show me what went wrong and fix it if you can.
 ```
+
+Plant the seed: one paste, and your agent grows a Memory.
 
 After the restart, say it: **Use Magnemo to remember what this project is.** Your agent writes one line down, and
 Magnemo asks you in the chat to approve it. One click. Then ask what it remembers.
@@ -229,14 +231,21 @@ magnemo doctor          # python, vault, config, ledger, and the mount — scans
 ```
 Anything that speaks MCP over stdio mounts the same way. The remote door (ChatGPT and hosted clients) is on its way in 0.7.0.
 
-## Agents draft, people keep — the one rule
-Agents get four MCP tools. Promotion is not one of them.
+## How it works
+**Governed: nothing becomes Memory without a yes, and the yes is checked: it needs a person's terminal and a name on the list.**
+
+Magnemo is Memory with a constitution: every fact carries provenance, every agent write waits in your review queue
+before it becomes Memory, and every decision lands in a Trust Ledger.
+
+Your agent gets four verbs. Approving is not one of them.
 The yes is yours: Magnemo asks you in the chat, and your answer never passes through the agent. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) says what that does and does not stop; [docs/MCP.md](docs/MCP.md) has the clients it works in.
 
 | Actor  | Door                | Can do |
 |--------|---------------------|--------|
 | Agents | MCP server (stdio)  | `retrieve` canonical memory · `stage` → **staging only, the one write tool** · `bootpack` on wake · `handoff` at the boundary |
 | You    | CLI + git (any editor)| review the queue · **promote / reject** · edit anything · own everything |
+
+**Zero dependencies.** Pure Python standard library, 3.11 or newer. Nothing else to install, nothing to trust but this code.
 
 ## The vault
 ```
