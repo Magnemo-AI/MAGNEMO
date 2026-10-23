@@ -59,7 +59,7 @@ One server, the same in every client. Tested where it says so; the rest follow e
 Each client's exact block is under "Install in your client".
 
 ## How it compares
-Five questions, answered from each project's own docs (read Oct 12, 2026; the pages are linked under the table).
+Five questions, answered from each project's own docs (read Oct 12, 2026, checked again Oct 22; the pages are linked under the table).
 
 | | Magnemo | Mem0 | Zep | Letta | Basic Memory |
 |---|---|---|---|---|---|
@@ -232,7 +232,7 @@ magnemo doctor          # python, vault, config, ledger, and the mount — scans
 Anything that speaks MCP over stdio mounts the same way. The remote door (ChatGPT and hosted clients) is on its way in 0.7.0.
 
 ## How it works
-**Governed: nothing becomes Memory without a yes, and the yes is checked: it needs a person's terminal and a name on the list.**
+**The yes is checked: nothing becomes Memory without a yes, and the engine can tell a person's yes from an agent's.**
 
 Magnemo is Memory with a constitution: every fact carries provenance, every agent write waits in your review queue
 before it becomes Memory, and every decision lands in a Trust Ledger.
