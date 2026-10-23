@@ -4,7 +4,7 @@ a drill that plays an agent's shell uses a plain subprocess, which has no termin
 import os, pty, subprocess
 
 
-HUMAN_VERBS = ("yes", "no", "clear", "promote", "reject", "cleartaint")
+HUMAN_VERBS = ("yes", "no", "clear", "promote", "reject", "cleartaint", "reclass")
 
 
 def run(cmd, **kw):

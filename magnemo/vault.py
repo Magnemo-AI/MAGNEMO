@@ -20,7 +20,7 @@ STORES = {
 }
 SYSTEM_DIRS = ("_staging", "_index", "_ledger", "_config")
 
-VALID_STATUS = ("staged", "canonical", "rejected", "archived")
+VALID_STATUS = ("staged", "canonical", "rejected", "archived", "receipt")   # P-104: a seat's report, filed; asks nothing
 
 FM_OPEN = "---"
 FM_KEYS = ("id", "title", "author", "written", "source", "status",
@@ -48,7 +48,7 @@ class Note:
     author: str            # agent name or "founder"
     written: str           # ISO timestamp
     source: str            # run id / gate id / "manual"
-    status: str            # staged | canonical | rejected | archived
+    status: str            # staged | canonical | rejected | archived | receipt
     partition: str         # dev | ops | shared
     store: str             # knowledge | playbooks | ...
     body: str = ""

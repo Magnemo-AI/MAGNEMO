@@ -196,6 +196,35 @@ class Governance:
                            **({"answered_by": answered_by} if answered_by else {}))
         return n
 
+    def answer_alert(self, alert_id: str, reviewer: str, reason: str, ran_by: str | None = None, answered_by: str | None = None) -> Note:
+        """P-102: a Sentinel ALERT whose note the keyholder cleared as a false positive is answered, and leaves the
+        queue. It is not a no on anyone's work: no trust event, no judgment receipt. One ledger line, `sentinel.alert`."""
+        n = self.vault.read(alert_id)
+        if n.author != "sentinel" or n.status != "staged":
+            raise ValueError(f"{alert_id} is not a staged Sentinel alert")
+        n.status, n.reviewed_by, n.reviewed_at, n.taint = "rejected", reviewer, now_iso(), ""
+        n.body += f"\n\n> ANSWERED by {reviewer} on {now_iso()}: {reason}"
+        self.vault.rewrite(n)
+        self.ledger.record("sentinel.alert", "answered", reviewer, alert_id, reason,
+                           **({"ran_by": ran_by} if ran_by else {}), **({"answered_by": answered_by} if answered_by else {}))
+        return n
+
+    def file_receipt(self, note_id: str, by: str, kind: str, reason: str, ran_by: str | None = None, at_door: bool = False) -> Note:
+        """P-104: a seat's report, sheet, standup, watch note or order is a receipt: on the record, asking nothing.
+        At the door it files itself (`note.receipt`); a waiting one is reclassed once by a keyholder (`note.reclass`,
+        staged → receipt). Nothing moves and nothing deletes: the file stays where it is, its status says what it is."""
+        n = self.vault.read(note_id)
+        if n.status != "staged" or n.taint:
+            raise ValueError(f"{note_id} is not a clean staged note (status={n.status}{', flagged' if n.taint else ''})")
+        n.status = "receipt"
+        self.vault.rewrite(n)
+        if at_door:
+            self.ledger.record("note.receipt", "filed", by, note_id, f"{kind}: {reason}", **({"ran_by": ran_by} if ran_by else {}))
+        else:
+            self.ledger.record("note.reclass", "receipt", by, note_id, f"staged → receipt ({kind}): {reason}",
+                               **({"ran_by": ran_by} if ran_by else {}))
+        return n
+
     # ---------------- keyholder-facing (CLI only; never an MCP tool) ----------------
     def promote(self, note_id: str, reviewer: str, reason: str = "", ran_by: str | None = None, answered_by: str | None = None) -> Note:
         """`ran_by` (P-54, the two-yes law): the yes is the keyholder's (`reviewer`); the hand

@@ -29,8 +29,8 @@ from .config import env, load_config
 REFUSED = "judgment.refused"                        # the trust ledger's action class for a yes the engine turned away
 SESSION_VAR = "MAGNEMO_MCP_SESSION"                 # set by the MCP server in its own process; its children inherit it
 ROUTE = "Type it yourself in a terminal:"         # every refusal ends with this and the command to type
-YOURS = {"yes": "yes", "promote": "yes", "review": "yes", "no": "no", "reject": "no", "clear": "clear", "cleartaint": "clear"}
-VERBS = ("yes", "no", "clear", "promote", "reject", "cleartaint", "review")
+YOURS = {"yes": "yes", "promote": "yes", "review": "yes", "no": "no", "reject": "no", "clear": "clear", "cleartaint": "clear", "reclass": "reclass"}
+VERBS = ("yes", "no", "clear", "promote", "reject", "cleartaint", "review", "reclass")
 # A process IS the server when the program it runs is: `magnemo-mcp`, `python -m magnemo.mcp`, `magnemo serve`, or
 # `python -m magnemo.cli serve`. The words appearing somewhere in another program's arguments (an editor, a shell's -c
 # string) do not make it one.
@@ -138,7 +138,7 @@ def check(vault_root: str, by: str = "", environ=None, stdin=None, mcp: bool | N
     return who, "terminal"
 
 
-CLASS = {"yes": "yes", "promote": "yes", "review": "yes", "no": "catch", "reject": "catch", "clear": "catch", "cleartaint": "catch"}
+CLASS = {"yes": "yes", "promote": "yes", "review": "yes", "no": "catch", "reject": "catch", "clear": "catch", "cleartaint": "catch", "reclass": "catch"}
 
 
 def catch(governance, verb: str, target: str, claimed: str, refused: Refused, environ=None, stdin=None) -> None:

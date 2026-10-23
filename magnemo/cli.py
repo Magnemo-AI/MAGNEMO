@@ -386,13 +386,22 @@ def cmd_inbox(a):
         sys.exit(1)
     inbox = os.path.normpath(os.path.join(v.root, ib)) if not os.path.isabs(ib) else ib
     routes = (cfg.get("inbox") or {}).get("routes") or []
+    from . import seats as _seats
+    seat_map = _seats.seats(cfg)               # P-78 · each seat stages only its own drops
     os.makedirs(inbox, exist_ok=True)
     drops = sorted(f for f in os.listdir(inbox) if os.path.isfile(os.path.join(inbox, f)) and not f.startswith("."))
     if not drops:
         print(f"inbox empty: {inbox}")
         return
-    staged, held = [], []
+    staged, held, others, filed = [], [], [], []
+    if seat_map and a.tag.lower() not in {s.lower() for s in seat_map}:
+        print(f"  '{a.tag}' has no seat in inbox.seats — this run stages nothing. Seats: {', '.join(seat_map)}")
     for fn in drops:
+        if seat_map:
+            owner = _seats.seat_of(seat_map, fn)
+            if (owner or "").lower() != a.tag.lower():
+                others.append((fn, owner))
+                continue
         path = os.path.join(inbox, fn)
         route = next((r for r in routes if fnmatch.fnmatch(fn, r.get("match", "*"))), None)
         if route is None:
@@ -424,7 +433,7 @@ def cmd_inbox(a):
             text = raw.decode("utf-8")
             body = text
             from .sentinel import sweep_text
-            ikind, ipat = sweep_text(text)
+            ikind, ipat = sweep_text(text, known_seat=bool(seat_map) and a.tag.lower() in {x.lower() for x in seat_map})   # P-102: a seat on the map is read as a reporter, not as a stranger
             if ikind == "injection":
                 taint = f"sentinel:injection:{ipat}"
                 aid = v.new_id(f"sentinel alert {fn}")
@@ -458,7 +467,16 @@ def cmd_inbox(a):
                 shutil.move(path, os.path.join(inbox, "_staged", fn))
             except (PermissionError, OSError):
                 pass
+        from . import receipts as _receipts
+        rkind = _receipts.kind_of(fn, body) if (seat_map and a.tag.lower() in {x.lower() for x in seat_map} and not taint
+                                                 and not body.startswith("BINARY RECEIPT")) else ""
+        if rkind:                                  # P-104: a seat's report files itself; it asks nobody anything
+            g.file_receipt(n.id, a.tag, rkind, fn, at_door=True)
+            filed.append((fn, n.id, rkind))
+            continue
         staged.append((fn, n.id))
+    for fn, nid, k in filed:
+        print(f"  filed   {fn} → {nid} — a {k}, on the record; asks nothing")
     for fn, nid in staged:
         print(f"  staged  {fn} → {nid}")
     for fn, pat, sid in held:
@@ -470,7 +488,11 @@ def cmd_inbox(a):
                 print(f"  TAINTED {fn} — {nn.taint}; a Sentinel ALERT note is staged; nothing acts on it")
         except FileNotFoundError:
             pass
-    print(f"{len(staged)} staged · {len(held)} held · promote with: magnemo yes")
+    for fn, owner in others:
+        print(f"  ·       {fn} — " + (f"belongs to {owner} (inbox.seats); left for that seat" if owner
+                                     else "no seat in inbox.seats owns this name; left in the inbox"))
+    print(f"{len(staged)} staged · " + (f"{len(filed)} filed (receipts) · " if filed else "") + f"{len(held)} held"
+          + (f" · {len(others)} left for other seats" if others else "") + (" · promote with: magnemo yes" if staged else ""))
 
 
 def cmd_guard(a):
@@ -721,9 +743,185 @@ def cmd_handoff(a):
     print(f"  handoff note staged → {e['note_id']}")
 
 
+def cmd_seat(a):
+    """`seat [NAME --owns GLOBS | --remove] --by KEYHOLDER --reason TXT` (P-78): who owns which drops at the
+    inbox door. With no name, the map. A keyholder's word; it writes inbox.seats and nothing else; ledgered."""
+    from . import seats as _seats
+    if a.name and a.vault == DEF and os.path.isdir(a.name):    # `magnemo seat <vault>`: the lone positional is the vault
+        a.vault, a.name = a.name, ""
+    v = Vault(a.vault)
+    if not v.exists():
+        print(f"No vault at {a.vault}. Run: magnemo init"); sys.exit(1)
+    if not a.name:
+        table = _seats.seats(load_config(v.root))
+        if not table:
+            print("inbox.seats is not set: every drop stages under the seat that runs the door.")
+        for seat, owned in table.items():
+            print(f"  {seat:<20} {', '.join(_seats._globs(owned))}")
+        return
+    try:
+        _seats.set_seat(v, a.name, (a.owns or "").split(","), _by_default(_gov(a.vault), a.by), a.reason or "",
+                        ran_by=_ran_by(), remove=a.remove)
+    except _seats.SeatError as e:
+        print(str(e)); sys.exit(2)
+    print(f"{a.name} is off the door." if a.remove else f"{a.name} stages only: {a.owns}. Ledgered (inbox.seat).")
+
+
 def cmd_clear(a):
-    """P-74: `magnemo clear <id> --reason` — the same verb as cleartaint; --by defaults to the first keyholder."""
+    """P-74: `magnemo clear <id> --reason` — the same verb as cleartaint; --by defaults to the first keyholder.
+    P-102: `magnemo clear --all-false --reason` — every staged note whose flag was a quote or a mention, in one typed word."""
+    if getattr(a, "all_false", False):
+        if a.note_id and a.vault == DEF:                 # `magnemo clear --all-false --reason … <vault>`: the lone positional is the vault
+            a.vault, a.note_id = a.note_id, ""
+        return cmd_clear_all_false(a)
+    if not a.note_id or (a.vault == DEF and os.path.isdir(a.note_id)):
+        print("clear: name a note (magnemo clear <id> --reason \"…\"), or --all-false for every false flag at once")
+        sys.exit(2)
     return cmd_cleartaint(a, verb="clear")
+
+
+def _flag_lines(rows):
+    """The listing both `flags` and `clear --all-false` print: each flagged staged note, the line that matched, and
+    how the rules as they stand read it."""
+    out = []
+    for r in rows:
+        n = r["note"]
+        out.append(f"  {'FALSE' if r['false'] else 'KEPT '}  {n.id}  ·  {n.author}  ·  flagged {r['pattern']}"
+                   + (f"  ·  {len(r['alerts'])} alert{'s' if len(r['alerts']) != 1 else ''}" if r["alerts"] else ""))
+        shown = [h for h in r["hits"] if h["weight"] > 0] if not r["false"] else r["hits"]
+        for h in shown[:3]:
+            out.append(f"         line {h['line']} · {h['pattern'].split('-')[0]} · {h['why']}: {h['text'][:150]}")
+        if not r["seat"]:
+            out.append("         not a seat's drop through the inbox door: read at full weight")
+    return out
+
+
+def cmd_flags(a):
+    """P-102: `magnemo flags` — read-only. The staged notes Sentinel flagged as instruction-shaped, read again under
+    the rules as they stand: FALSE (a quote, a mention, a control's name) or KEPT (it still trips). Changes nothing."""
+    from . import sentinel as _sentinel, seats as _seats
+    g = _gov(a.vault)
+    rows = _sentinel.rescore(g.vault, _seats.seats(load_config(g.vault.root)))
+    if a.json:
+        print(json.dumps([{"id": r["note"].id, "author": r["note"].author, "pattern": r["pattern"], "false": bool(r["false"]),
+                           "alerts": [x.id for x in r["alerts"]], "hits": r["hits"]} for r in rows], indent=2))
+        return
+    for ln in _flag_lines(rows):
+        print(ln)
+    nf = sum(1 for r in rows if r["false"])
+    print(f"{len(rows)} flagged · {nf} false · {len(rows) - nf} kept" + ('  ·  the keyholder clears the false ones: magnemo clear --all-false --reason "…"' if nf else ""))
+
+
+def cmd_receipts(a):
+    """P-104: `magnemo receipts [--seat S] [--limit N]` — the seats' reports, sheets, standups, watch notes and orders,
+    filed and asking nothing; newest first, per seat. Read-only."""
+    from . import receipts as _receipts
+    g = _gov(a.vault)
+    rows = _receipts.listed(g.vault, a.seat)
+    if not rows:
+        print("No receipts" + (f" from {a.seat}" if a.seat else "") + ".")
+        return
+    by = {}
+    for n in rows:
+        by.setdefault(n.author, []).append(n)
+    for seat in sorted(by, key=lambda s: by[s][0].written or "", reverse=True):
+        ns = by[seat]
+        print(f"{seat} · {len(ns)} receipt{'s' if len(ns) != 1 else ''}")
+        for n in ns[:a.limit]:
+            print(f"  {(n.written or '')[:16].replace('T', ' ')}  {n.id[-8:]}  {_receipts.drop_name(n) or n.title}")
+        if len(ns) > a.limit:
+            print(f"  … {len(ns) - a.limit} older")
+
+
+def _count_notes(v):
+    """Every note file in the vault: the stores and _staging (the other _ folders hold no notes)."""
+    n = 0
+    for top in sorted(os.listdir(v.root)):
+        if top.startswith("_") and top != "_staging" or not os.path.isdir(os.path.join(v.root, top)):
+            continue
+        for dp, _dn, fn in os.walk(os.path.join(v.root, top)):
+            n += sum(1 for f in fn if f.endswith(".md") and f != "README.md")
+    return n
+
+
+def cmd_reclass(a):
+    """P-104: `magnemo reclass --reports-to-receipts --reason "…"` — the keyholder's one typed word. The waiting notes
+    that are a seat's report, sheet, standup, watch note or order become receipts; the false Sentinel flags (P-102) come
+    off in the same run and their alerts are answered. Nothing moves, nothing deletes; one ledger line per note."""
+    from . import receipts as _receipts, sentinel as _sentinel, seats as _seats
+    if not a.reports_to_receipts:
+        print("reclass: say what to reclass: --reports-to-receipts"); sys.exit(2)
+    g = _gov(a.vault)
+    v = g.vault
+    by, ran_by = _yes_check(g, a.by, "reclass", "--reports-to-receipts")[:2]
+    seat_map = _seats.seats(load_config(v.root))
+    flags = _sentinel.rescore(v, seat_map)
+    false = [r for r in flags if r["false"]]
+    rows = _receipts.candidates(v, seat_map, also_clean={r["note"].id for r in false})
+    cleared = {r["note"].id for r in false}
+    alerts = {x.id for r in false for x in r["alerts"]} | {x.id for x in _receipts.settled_alerts(v, cleared)}
+    waiting = [n for n in v.staged() if n.status == "staged"]
+    per = {}
+    for n, k in rows:
+        per.setdefault(n.author, []).append(n)
+    print(f"{len(waiting)} notes wait for a yes today.")
+    print(f"{len(rows)} of them are a seat's report, sheet, standup, watch note or order. They become receipts: on the record, asking nothing.")
+    for seat in sorted(per, key=lambda s: -len(per[s])):
+        ds = sorted((n.written or "")[:10] for n in per[seat])
+        print(f"  {seat:<18} {len(per[seat]):>4}   {ds[0]} … {ds[-1]}")
+    print(f"{len(false)} false Sentinel flags come off in the same run (P-102); {len(alerts)} Sentinel alerts whose note is no longer flagged are answered.")
+    left = len(waiting) - len(rows) - len(alerts - {n.id for n, _ in rows})
+    print(f"After: {left} wait for your yes.")
+    if not rows and not false:
+        print("Nothing to reclass."); return
+    word = f"reclass {len(rows)}"
+    try:
+        said = input(f'Type "{word}" to do it; anything else leaves everything as it is: ').strip()
+    except EOFError:
+        said = ""
+    if said != word:
+        print("Nothing was changed."); return
+    before = _count_notes(v)
+    why = a.reason.strip()
+    for r in false:
+        g.clear_taint(r["note"].id, by, why, ran_by=ran_by, answered_by="terminal")
+    for aid in sorted(alerts):
+        g.answer_alert(aid, by, f"its note is no longer flagged: {why}", ran_by=ran_by, answered_by="terminal")
+    for n, k in rows:
+        g.file_receipt(n.id, by, k, why, ran_by=ran_by)
+    after = _count_notes(v)
+    still = sum(1 for n in v.staged() if n.status == "staged")
+    print(f"reclassed {len(rows)} · cleared {len(false)} · answered {len(alerts)} alerts · notes before {before}, after {after} · {still} wait for your yes · by {by}")
+
+
+def cmd_clear_all_false(a):
+    from . import sentinel as _sentinel, seats as _seats
+    g = _gov(a.vault)
+    by, ran_by = _yes_check(g, a.by, "clear", "--all-false")[:2]        # P-97: a person's terminal, a keyholder's name
+    rows = _sentinel.rescore(g.vault, _seats.seats(load_config(g.vault.root)))
+    false = [r for r in rows if r["false"]]
+    for ln in _flag_lines(rows):
+        print(ln)
+    alerts = {x.id: x for r in false for x in r["alerts"]}
+    print(f"{len(rows)} flagged · {len(false)} false · {len(rows) - len(false)} kept (they still trip; each is yours to read: magnemo clear <id>)")
+    if not false:
+        print("Nothing to clear.")
+        return
+    word = f"clear {len(false)}"
+    print(f"Clearing takes the flag off the {len(false)} FALSE notes (they stay staged, for your yes or no) and answers their {len(alerts)} Sentinel alerts.")
+    try:
+        said = input(f'Type "{word}" to do it; anything else leaves everything as it is: ').strip()
+    except EOFError:
+        said = ""
+    if said != word:
+        print("Nothing was cleared.")
+        return
+    why = a.reason.strip()
+    for r in false:
+        g.clear_taint(r["note"].id, by, why, ran_by=ran_by, answered_by="terminal")
+    for aid in alerts:
+        g.answer_alert(aid, by, f"its note was cleared as a false flag: {why}", ran_by=ran_by, answered_by="terminal")
+    print(f"cleared {len(false)} · answered {len(alerts)} alerts · by {by} · ran_by {ran_by}")
 
 
 def cmd_cleartaint(a, verb="cleartaint"):
@@ -865,7 +1063,10 @@ def main():
     s = sub.add_parser("reject");  s.add_argument("note_id"); s.add_argument("--by", required=True); s.add_argument("--reason", required=True); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_reject)
     s = sub.add_parser("outcome"); s.add_argument("rid"); s.add_argument("verdict", choices=["approved","denied","failed"]); s.add_argument("--by", required=True); s.add_argument("--reason", default=""); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_outcome)
     s = sub.add_parser("cleartaint"); s.add_argument("note_id"); s.add_argument("--by", required=True); s.add_argument("--reason", required=True); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_cleartaint)
-    s = sub.add_parser("clear", help="clear a note's taint after reading it (the keyholder's verb; ledgered) — cleartaint's short name"); s.add_argument("note_id"); s.add_argument("--by", default="", help="default: the first keyholder in trust.humans"); s.add_argument("--reason", required=True); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_clear)
+    s = sub.add_parser("clear", help="clear a note's taint after reading it (the keyholder's verb; ledgered) — cleartaint's short name"); s.add_argument("note_id", nargs="?", default=""); s.add_argument("--all-false", dest="all_false", action="store_true", help="P-102: clear every staged note whose flag was a quote or a mention, after one typed word; lists them first"); s.add_argument("--by", default="", help="default: the first keyholder in trust.humans"); s.add_argument("--reason", required=True); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_clear)
+    s = sub.add_parser("receipts", help="P-104: the seats' reports, sheets, standups, watch notes and orders, filed and asking nothing (read-only)"); s.add_argument("--seat", default=""); s.add_argument("--limit", type=int, default=10); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_receipts)
+    s = sub.add_parser("reclass", help="P-104: the keyholder's one word: waiting reports become receipts, false flags come off"); s.add_argument("--reports-to-receipts", dest="reports_to_receipts", action="store_true"); s.add_argument("--by", default=""); s.add_argument("--reason", required=True); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_reclass)
+    s = sub.add_parser("flags", help="read-only: the staged notes Sentinel flagged, read again under the rules as they stand (FALSE or KEPT), with the matched line"); s.add_argument("--json", action="store_true"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_flags)
     s = sub.add_parser("autonomy"); s.add_argument("actor"); s.add_argument("--as-of", dest="as_of", default="", help="ISO timestamp to score at (default: now)"); s.add_argument("--json", action="store_true"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_autonomy)
     s = sub.add_parser("trust");   ts = s.add_subparsers(dest="sub", required=True)
     t = ts.add_parser("record");   t.add_argument("actor"); t.add_argument("klass", metavar="class", choices=["read","stage","merge-code","promote-canon","publish"]); t.add_argument("kind", choices=["success","verified","halt","failure","denied","surprise","violation","reinstate"]); t.add_argument("--by", required=True); t.add_argument("--reason", default=""); t.add_argument("--ref", default="", help="PR number, note id, commit, ..."); t.add_argument("--when", default="", help="ISO timestamp for a KNOWN historical event"); t.add_argument("--grant", default="", help="grant id acted under (consumes a one-time grant)"); t.add_argument("vault", nargs="?", default=DEF)
@@ -878,6 +1079,7 @@ def main():
     s = sub.add_parser("ledger");  s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_ledger)
     s = sub.add_parser("costs");   s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_costs)
     s = sub.add_parser("stage", formatter_class=argparse.RawDescriptionHelpFormatter, epilog=STAGE_EXAMPLE);   s.add_argument("title"); s.add_argument("--body", default=None, help="note body (or --file, or pipe via stdin)"); s.add_argument("--file", default=None, help="read the body from this file"); s.add_argument("--partition", required=True, help="a partition this vault declares"); s.add_argument("--store", required=True, help="a store inside that partition (a wrong one is refused with the valid ones named)"); s.add_argument("--source", required=True, help="provenance: run id / audit id / where this came from (mandatory)"); s.add_argument("--author", default="", help="default: $MAGNEMO_AGENT, else 'founder'"); s.add_argument("--tags", default=""); s.add_argument("--impact", choices=["security", "money", "correctness", "process", "info"], default="info"); s.add_argument("--supersedes", default=""); s.add_argument("--taint", default="", help="REQUIRED labelling when content came from an untrusted source"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_stage)
+    s = sub.add_parser("seat", help="who owns which drops at the inbox door (P-78)"); s.add_argument("name", nargs="?", default=""); s.add_argument("--owns", default="", help="comma-separated file-name globs, e.g. \"marketing-*\""); s.add_argument("--remove", action="store_true"); s.add_argument("--by", default="", help="default: the first keyholder in trust.humans"); s.add_argument("--reason", default=""); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_seat)
     s = sub.add_parser("inbox");   s.add_argument("--dir", default="", help="the drop folder (default: config inbox.dir)"); s.add_argument("--as", dest="tag", default=None, help="author tag: boardroom-session | founder | cc (default: $MAGNEMO_AGENT)"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_inbox)
     s = sub.add_parser("guard");   s.add_argument("--off", action="store_true", help="lower the wall (keyholder verb, ledgered)"); s.add_argument("--status", action="store_true"); s.add_argument("--reason", default=""); s.add_argument("--by", default=""); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_guard)
     s = sub.add_parser("restore"); s.add_argument("target", help="a render path (relative to the render root) or a note id"); s.add_argument("--to", default="latest", help="archived version (ts prefix or sha12); default latest"); s.add_argument("--versions", action="store_true", help="list archived versions"); s.add_argument("--by", default=""); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_restore)

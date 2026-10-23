@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.9 — THE WORTHY YES · A QUOTE IS NOT AN INSTRUCTION
+- **A yes is for Memory.** A report, a sheet, a standup, a watch note or an order dropped through the inbox door by a
+  seat on the vault's map (`inbox.seats`) files itself as a **receipt**: `status: receipt`, signed by the seat, on the
+  record (`note.receipt` in the trust ledger). It asks nobody anything, and it is never served to an agent as
+  Memory (`retrieve` serves approved notes only). The drop's file name says what it is; a `kind:` line in its first
+  lines says so outright, and a `propose:` line or `kind: memory` keeps it a proposal that waits for your yes.
+- **`magnemo receipts`** lists them, newest first, per seat.
+- **`magnemo reclass --reports-to-receipts --reason "…"`** files the reports already waiting in one typed word
+  (`reclass N`), with the yes check (a terminal, a name on `trust.humans`). In the same run it takes off the Sentinel
+  flags that were quotes, not instructions, and answers the alerts whose note is no longer flagged. Nothing moves and
+  nothing is deleted: the count of notes before equals the count after, and the ledger has one `note.reclass` line
+  per note.
+- **A quote is not an instruction.** At the inbox door, a drop from a seat on the map is read as a report: five of
+  Sentinel's shapes (S3, S4, S6, S9, S13) no longer flag a line the note quotes or only mentions, and a control's name
+  in capitals or a table cell weighs a quarter. A seat's own instruction line still flags it. The other eight shapes
+  flag a line quoted or not, from anyone, and every other door reads as before. S1 also reads "ignore the above".
+- **`magnemo flags`** (read-only) lists the flagged notes again under the rules as they stand, with the line that
+  matched; **`magnemo clear --all-false --reason "…"`** clears the false ones in one typed word.
+- **The seat map at the door** (`inbox.seats`; `magnemo seat`): each seat stages only the drops whose names it owns.
+  Without a map nothing changes: every drop stages under the seat that runs the door, read at full weight.
+
 ## 0.6.8 — THE YES, ASKED IN THE CHAT · THE YES CHECK
 - **The yes is one click where you already are.** When an agent stages a clean note through the MCP server and the
   client can put a form to its user (MCP elicitation), Magnemo asks the client to ask you: the note's first line, who
