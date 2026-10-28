@@ -123,7 +123,7 @@ class TestTheEmptyDeskWords(unittest.TestCase):
         readme = open(os.path.join(ROOT, "README.md")).read()
         self.assertIn("Your agent never waits on you. When you want something kept, say keep.", readme.split("```text", 1)[1].split("```", 1)[0])
         limits = " ".join(open(os.path.join(ROOT, "KNOWN_LIMITS.md")).read().replace("**", "").split())
-        self.assertIn("Magnemo never stops your agent to ask. Notes wait in staging until you say keep; a yes in the chat counts, and the record says how it was given.", limits)
+        self.assertIn("MAGNEMO never stops your agent to ask. Notes wait in staging until you say keep; a yes in the chat counts, and the record says how it was given.", limits)
         from magnemo import mcp
         self.assertEqual(mcp.STAGED_LINE, "Staged. Say keep when you want it kept.")
         self.assertEqual(mcp.batch_line(10), "10 notes staged since you left. keep all / pick / later.")

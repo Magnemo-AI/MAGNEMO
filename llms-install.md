@@ -1,9 +1,9 @@
-# Installing Magnemo (for an agent doing the install)
+# Installing MAGNEMO (for an agent doing the install)
 
-Magnemo is an MCP server for memory. It runs on this machine, imports no network module, and keeps memory as plain
+MAGNEMO is an MCP server for memory. It runs on this machine, imports no network module, and keeps memory as plain
 markdown files in a folder the user owns. Needs Python 3.11 or newer.
 
-1. Install the engine: `pip install magnemo` (or `uv tool install magnemo` if pip cannot find it). This gives the
+1. Install the engine: `pip install MAGNEMO` (or `uv tool install MAGNEMO` if pip cannot find it). This gives the
    `magnemo` command and the `magnemo-mcp` server. `uvx magnemo-mcp` also works without a prior install.
 2. Make a vault — ask the user which folder, or use `./vault` in the project: `magnemo init ./vault`.
 3. Register the server with the client. Every client takes the same stdio server:

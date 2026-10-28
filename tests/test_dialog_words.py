@@ -15,7 +15,7 @@ class TestTheWords(unittest.TestCase):
     def setUp(self):
         self.readme = read("README.md")
         self.top = self.readme.split("## Install in your client")[0]                 # everything before the per-client blocks
-        self.paste = re.search(r"```text\n(Set up Magnemo in this project:.*?)```", self.readme, re.S).group(1)
+        self.paste = re.search(r"```text\n(Set up MAGNEMO in this project:.*?)```", self.readme, re.S).group(1)
 
     def test_no_terminal_on_the_top_screen_in_the_paste_or_in_the_install_file(self):
         for name, text in (("the README's top screen", self.top), ("the first-run paste", self.paste), ("llms-install.md", read("llms-install.md"))):
@@ -24,9 +24,10 @@ class TestTheWords(unittest.TestCase):
     def test_the_action_is_said_in_the_one_sentence(self):
         self.assertIn(SENTENCE, self.top)
         self.assertLess(self.top.index(SENTENCE), self.top.index("## Install in one paste"))   # above the paste: the first screen
-        self.assertTrue(self.readme.startswith("# Magnemo\n**The Memory MCP. Your AI remembers. You keep what matters.**\n\nMagnemo is Memory for your AI, kept on your computer in plain files."))   # the founder's lines, Oct 12
+        self.assertTrue(self.readme.split("\n", 1)[1].startswith("**The Memory MCP. Your AI remembers. You keep what matters.**\n\nMAGNEMO is Memory for your AI, kept on your computer in plain files."))   # the founder's lines, Oct 12
+        self.assertIn('<img alt="MAGNEMO"', self.readme.split("\n", 1)[0])   # the Mark Law (Oct 24, carried in addendum D): the header is the lockup
         self.assertIn("nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.", self.top)
-        self.assertLess(self.top.index("pip install magnemo"), self.top.index("Set up Magnemo in this project:"))   # three lines before the paste
+        self.assertLess(self.top.index("pip install MAGNEMO"), self.top.index("Set up MAGNEMO in this project:"))   # three lines before the paste
         self.assertIn("## Works with", self.top)
         self.assertIn("Your agent writes one line down and\nkeeps working. Say keep, and it is Memory.", self.top)   # P-106 addendum A: nothing asks mid-work
         self.assertIn("Look around this folder, tell me what this project is for, and stage that as the first note.", self.paste)   # addendum D: the restart line
@@ -44,7 +45,7 @@ class TestTheWords(unittest.TestCase):
     def test_the_limit_is_written_down(self):
         limits = " ".join(read("KNOWN_LIMITS.md").split())
         self.assertIn("It stops a wrong thing from becoming memory without a person; it does not stop a wrong thing from being written.", limits)
-        self.assertIn("The question at the pause is drawn by your client, not by Magnemo.", limits)   # P-106 addendum A
+        self.assertIn("The question at the pause is drawn by your client, not by MAGNEMO.", limits)   # P-106 addendum A
         self.assertIn("under 300 ms", limits)
 
 

@@ -1,7 +1,7 @@
 # Security
 
 ## Reporting
-If you find a security problem in Magnemo, write to **hello@magnemo.ai** with what you found, how to reproduce
+If you find a security problem in MAGNEMO, write to **hello@magnemo.ai** with what you found, how to reproduce
 it, and what you think it lets someone do. Please do not open a public issue for it first.
 
 You will get an acknowledgement within **72 hours**, and a plain answer on what we will do and when. We will

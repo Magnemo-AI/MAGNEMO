@@ -82,7 +82,7 @@ the wait ends, and the handoff completes. A note Sentinel is holding is never pu
 | Client | Seen | Says it can ask | What happened |
 |---|---|---|---|
 | Claude Code, a person at it | 2.1.296, Oct 12 2026 | yes (the dialog was drawn in the chat) | 0.6.8–0.6.9, when the question was asked inside `stage`: the agent staged one note; the person pressed Yes; the note was promoted 9 seconds after it was written. The ledger line: `approved`, actor `founder`, `ran_by: mcp:drill-seat`, `answered_by: elicitation:claude-code 2.1.296`. |
-| Claude Code, run with nobody at it (`claude -p`) | 2.1.296, Oct 12 2026 | yes (form and url) | It let go of the question in 5 ms. Magnemo left the note staged. |
+| Claude Code, run with nobody at it (`claude -p`) | 2.1.296, Oct 12 2026 | yes (form and url) | It let go of the question in 5 ms. MAGNEMO left the note staged. |
 | Claude desktop app | untested | | |
 | Cursor | untested | | |
 | VS Code | untested | | |
@@ -254,7 +254,7 @@ any MCP client.)
 a vector DB, a notes folder). Mount this server *alongside* it and route only the
 *governed* moments through the four verbs: candidates worth your review go to
 `stage`; decisions the agent must not make alone are `retrieve`d from canon. The
-existing store keeps scratch; Magnemo keeps truth. Nothing in the agent's own
+existing store keeps scratch; MAGNEMO keeps truth. Nothing in the agent's own
 memory becomes canon without passing the staging gate.
 
 **3. Gateway.** One server process, many agents, each with its own

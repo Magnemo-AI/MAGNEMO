@@ -3,7 +3,7 @@
 Honesty is the product. These are the current edges, stated plainly. Every one
 of them is a roadmap item, not a surprise left for you to find.
 
-- **Magnemo never stops your agent to ask.** Notes wait in staging until you
+- **MAGNEMO never stops your agent to ask.** Notes wait in staging until you
   say keep; a yes in the chat counts, and the record says how it was given.
   `stage` asks nothing; the question comes at a pause (the end of the agent's
   turn, or a handoff), once, for everything that waits: keep all, pick, or
@@ -34,10 +34,10 @@ of them is a roadmap item, not a surprise left for you to find.
   thing from becoming memory without a person; it does not stop a wrong
   thing from being written. Reading the note before you say yes is the
   part no tool does for you.
-- **The question at the pause is drawn by your client, not by Magnemo.** At a
+- **The question at the pause is drawn by your client, not by MAGNEMO.** At a
   handoff the server asks the client to ask you (MCP elicitation) about the
   notes that wait, and takes the client's answer. The agent has no tool that answers it. A client set up
-  to answer for you, by a hook or a harness, can: Magnemo refuses an answer
+  to answer for you, by a hook or a harness, can: MAGNEMO refuses an answer
   that comes back in under 300 ms and logs it, and that catches only the
   crude case. Every yes says which surface it came through. Today the
   dialog has been seen in one client, Claude Code; `docs/MCP.md` has the

@@ -1,6 +1,6 @@
-# Contributing to Magnemo
+# Contributing to MAGNEMO
 
-Magnemo is governed software — the repo runs under the same law the product
+MAGNEMO is governed software — the repo runs under the same law the product
 enforces: every change has provenance, every ruling has a story.
 
 ## The short version
