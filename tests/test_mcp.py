@@ -11,7 +11,7 @@ from magnemo.governance import Governance
 from magnemo import mcp, foresight, handoff
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FOUR = ["retrieve", "stage", "bootpack", "handoff"]
+FOUR = ["retrieve", "stage", "bootpack", "handoff", "keep", "drop", "pending"]   # P-106 v3: the four verbs, and keep and drop to carry the person's yes or no
 
 
 def make_server(vault_dir, **env):

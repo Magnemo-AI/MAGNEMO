@@ -2,7 +2,7 @@
 and never send anyone to a terminal. The manual names the command line once."""
 import os, re, unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SENTENCE = "When your agent writes something down, Magnemo asks you in the chat. One click."
+SENTENCE = "Your agent writes one line down and keeps working. Say keep, and it is Memory."      # P-106 addendum D (was: "… asks you in the chat. One click.")
 
 
 def read(*parts):
@@ -28,7 +28,9 @@ class TestTheWords(unittest.TestCase):
         self.assertIn("nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.", self.top)
         self.assertLess(self.top.index("pip install magnemo"), self.top.index("Set up Magnemo in this project:"))   # three lines before the paste
         self.assertIn("## Works with", self.top)
-        self.assertIn("Magnemo asks you in the chat to approve it. One click.", self.top)
+        self.assertIn("Your agent writes one line down and\nkeeps working. Say keep, and it is Memory.", self.top)   # P-106 addendum A: nothing asks mid-work
+        self.assertIn("Look around this folder, tell me what this project is for, and stage that as the first note.", self.paste)   # addendum D: the restart line
+        self.assertNotIn("One click", self.top)
 
     def test_the_paste_no_longer_asks_for_a_command_to_approve(self):
         self.assertNotIn("command to approve", self.paste); self.assertNotIn("magnemo yes", self.top)
@@ -36,13 +38,13 @@ class TestTheWords(unittest.TestCase):
 
     def test_the_command_line_is_named_once_in_the_manual_and_nowhere_above_it(self):
         manual = read("docs", "MCP.md")
-        self.assertEqual(manual.count("the command line is the other door"), 1)       # the manual sends a person there in one place
+        self.assertEqual(manual.count("at their own terminal is the verified yes"), 1)   # the manual sends a person there in one place (P-106 v3)
         self.assertNotIn("The CLI is the other door", self.readme)
 
     def test_the_limit_is_written_down(self):
         limits = " ".join(read("KNOWN_LIMITS.md").split())
         self.assertIn("It stops a wrong thing from becoming memory without a person; it does not stop a wrong thing from being written.", limits)
-        self.assertIn("The question in the chat is drawn by your client, not by Magnemo.", limits)
+        self.assertIn("The question at the pause is drawn by your client, not by Magnemo.", limits)   # P-106 addendum A
         self.assertIn("under 300 ms", limits)
 
 

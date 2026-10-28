@@ -174,7 +174,7 @@ class TestTheBulkClear(Door):
         self.lay()
         for kw in ({"agent": "cc", "tty": True, "typed": "clear 2"}, {"tty": False}):
             rc, out = self.cli("clear", "--all-false", "--reason", "quotes", **kw)
-            self.assertEqual(rc, 3, out); self.assertIn("This clear is yours. Type it yourself in a terminal: magnemo clear --all-false", out)
+            self.assertEqual(rc, 3, out); self.assertIn("This clear is the keyholder's. At their own terminal: magnemo clear --all-false", out)
         self.assertTrue(self.v.read(self.a[0]).taint)
         led = open(os.path.join(self.d, "_ledger", "ledger.jsonl")).read() if os.path.exists(os.path.join(self.d, "_ledger", "ledger.jsonl")) else ""
         self.assertNotIn("memory.cleartaint", led)

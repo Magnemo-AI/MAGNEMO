@@ -11,9 +11,15 @@ markdown files in a folder the user owns. Needs Python 3.11 or newer.
    The README's "Install in your client" section has the exact block for Claude Code, Claude Desktop, Cursor, VS Code,
    Windsurf, Cline, Continue, Gemini CLI, Codex CLI and Zed. For Cline: `cline_mcp_settings.json`, the `mcpServers`
    block from the README, `disabled: false`.
+   `magnemo mount` writes the server's absolute path, and a short block in `CLAUDE.md` (Claude Code) or
+   `.cursor/rules/magnemo.mdc` (Cursor) saying this project's Memory is MAGNEMO; `magnemo unmount` takes both out.
 4. Verify: `magnemo doctor` must end in `0 fail`. It checks Python, the vault, the config, the ledger and the mount.
-5. Tell the user: what you write with the `stage` tool waits in the vault's `_staging/` until they approve it. Where
-   the client can, Magnemo asks them in the chat. Where it cannot, the note waits for them, and the tool's answer says
-   where their yes is. The approval is never yours to give or to run: the agent drafts, the person keeps.
+5. Tell the user: remembering means proposing. What you write with the `stage` tool waits in the vault's `_staging/`
+   until they say keep (`pending` with an id reads one back whole). Never
+   stop to ask while you work: `stage` returns at once. At the end of your turn, if `pending` lists notes, say its one
+   line ("N notes staged since you left. keep all / pick / later."); when they say keep, call `keep` (the record marks
+   that yes unverified). The approval is never yours to give: the agent drafts and carries the person's yes, the person
+   keeps.
 
-No API key, no account, no token. The four tools are `retrieve`, `stage`, `bootpack`, `handoff`.
+No API key, no account, no token. The four verbs are `retrieve`, `stage`, `bootpack`, `handoff`; `keep` and `drop`
+carry the person's yes or no; `pending` lists what waits.

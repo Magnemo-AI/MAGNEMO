@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "ai.magnemo/magnemo",
   "title": "Magnemo",
-  "description": "Governed Memory for AI Agents, in plain local files. No network calls of its own.",
-  "version": "0.6.9",
+  "description": "Persistent Memory for AI Agents, in plain local files. No network calls of its own.",
+  "version": "0.6.11",
   "websiteUrl": "https://magnemo.ai",
   "repository": {
     "url": "https://github.com/magnemo-ai/magnemo",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "magnemo-mcp",
-      "version": "0.6.9",
+      "version": "0.6.11",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

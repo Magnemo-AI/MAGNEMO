@@ -3,7 +3,7 @@
 
 Magnemo is Memory for your AI, kept on your computer in plain files. Your AI writes down what it learns as it works; nothing becomes Memory until you approve it, and every Memory shows who wrote it and who approved it.
 
-When your agent writes something down, Magnemo asks you in the chat. One click.
+Your agent writes one line down and keeps working. Say keep, and it is Memory.
 
 [![PyPI](https://img.shields.io/pypi/v/magnemo)](https://pypi.org/project/magnemo/)
 [![downloads](https://img.shields.io/pypi/dm/magnemo)](https://pypi.org/project/magnemo/)
@@ -20,10 +20,10 @@ In three lines:
 ```bash
 pip install magnemo      # Python 3.11 or newer
 magnemo init             # makes the vault: a folder of plain files
-magnemo mount            # writes .mcp.json, the file Claude Code reads
+magnemo mount            # writes .mcp.json, the file Claude Code reads, and the first line in CLAUDE.md
 ```
 
-Or let your agent do it. Open Claude Code in any of your project folders, and paste this. (Its `magnemo mount` step writes `.mcp.json`, the file Claude Code reads. In Cursor, Windsurf or another client, use the block for your client under "Install in your client".)
+Or let your agent do it. Open Claude Code in any of your project folders, and paste this. (Its `magnemo mount` step writes `.mcp.json`, the file Claude Code reads, and a short block in `CLAUDE.md` that tells every new session where this project's Memory is. In Cursor, Windsurf or another client, use the block for your client under "Install in your client".)
 
 ```text
 Set up Magnemo in this project:
@@ -31,22 +31,23 @@ Set up Magnemo in this project:
 2. Initialize the vault: magnemo init
 3. Register the MCP server: run magnemo mount — it adds Magnemo to this project's MCP config and keeps any servers already there.
 4. Verify: run magnemo doctor and confirm everything passes.
-5. Then ask me to restart you, so Magnemo's tools load, and to say this when you are back: "Use Magnemo to remember what this project is."
+5. Then ask me to restart you, so Magnemo's tools load, and to say this when you are back: "Look around this folder, tell me what this project is for, and stage that as the first note." Your agent never waits on you. When you want something kept, say keep.
 If anything fails, show me what went wrong and fix it if you can.
 ```
 
 Plant the seed: one paste, and your agent grows a Memory.
 
-After the restart, say it: **Use Magnemo to remember what this project is.** Your agent writes one line down, and
-Magnemo asks you in the chat to approve it. One click. Then ask what it remembers.
+After the restart, say it: **Look around this folder, tell me what this project is for, and stage that as the first note.**
+Your agent writes one line down and
+keeps working. Say keep, and it is Memory. Then ask what it remembers.
 
 ## Works with
 One server, the same in every client. Tested where it says so; the rest follow each client's own docs.
 
 | Client | Tested | How |
 |---|---|---|
-| Claude Code | yes: Oct 12, 2026, Claude Code 2.1.296. The four tools, and the question in the chat: one click approved a note. | `magnemo mount`, or `claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-mcp` |
-| Claude Desktop | untested | open `magnemo-0.6.9.mcpb` from the latest release |
+| Claude Code | yes: Oct 26–28, 2026, Claude Code 2.1.309. Seven tools; the yes in the chat; `pending` reads a body. | `magnemo mount`, or `claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-mcp` |
+| Claude Desktop | untested end to end | the `uvx` block under "Install in your client", with absolute paths |
 | Cursor | untested | the Add to Cursor link below, or `.cursor/mcp.json` |
 | VS Code | untested | `.vscode/mcp.json` |
 | Windsurf | untested | `~/.codeium/windsurf/mcp_config.json` |
@@ -74,17 +75,17 @@ Five questions, answered from each project's own docs (read Oct 12, 2026, checke
 Their pages: Mem0 [overview](https://docs.mem0.ai/open-source/overview), [platform and open source](https://docs.mem0.ai/platform/platform-vs-oss), [add](https://docs.mem0.ai/core-concepts/memory-operations/add), [history](https://docs.mem0.ai/api-reference/memory/history-memory), [quickstart](https://docs.mem0.ai/open-source/python-quickstart), [delete](https://docs.mem0.ai/core-concepts/memory-operations/delete), [export](https://docs.mem0.ai/platform/features/memory-export) · Zep [concepts](https://help.getzep.com/concepts), [facts](https://help.getzep.com/v3/facts.md), [security](https://help.getzep.com/v3/security-compliance.md), [deleting data](https://help.getzep.com/deleting-data-from-the-graph), [Graphiti](https://github.com/getzep/graphiti) · Letta [MemFS](https://docs.letta.com/concepts/memfs), [memory settings](https://docs.letta.com/configuration/memory), [local mode](https://docs.letta.com/self-hosting) · Basic Memory [README](https://github.com/basicmachines-co/basic-memory), [what it is](https://docs.basicmemory.com/start-here/what-is-basic-memory), [tools](https://docs.basicmemory.com/reference/mcp-tools-reference), [note format](https://docs.basicmemory.com/concepts/knowledge-format), [semantic search](https://docs.basicmemory.com/raw/concepts/semantic-search.md), [suggestions](https://docs.basicmemory.com/raw/cloud/comments-and-suggestions.md), [file history](https://docs.basicmemory.com/raw/cloud/file-history.md). A cell that is wrong or out of date: open an issue and it is fixed.
 
 **Listed on** the [official MCP registry](https://registry.modelcontextprotocol.io/?q=magnemo) (`ai.magnemo/magnemo`) · [PyPI](https://pypi.org/project/magnemo/) · [mcpservers.org](https://mcpservers.org/servers/magnemo-ai/magnemo) · [Glama](https://glama.ai/mcp/servers/Magnemo-AI/magnemo) · [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers).
-**Tested on** every push, on Python 3.9, 3.11 and 3.12: 300 tests, as of Oct 12, 2026 ([the runs](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml)).
+**Tested on** every push, on Python 3.9, 3.11 and 3.12: 370 tests, as of Oct 28, 2026 ([the runs](https://github.com/Magnemo-AI/magnemo/actions/workflows/test.yml)).
 
 ## What's new
+- **0.6.11** · Oct 28, 2026 · `magnemo mount` writes the first line in CLAUDE.md, so every new session knows where this project's Memory is. `pending` reads a note nobody has kept yet.
+- **0.6.10** · Oct 26, 2026 · Your agent never stops to ask. Say keep in the chat, and the record says how the yes was given.
 - **0.6.9** · Oct 22, 2026 · A seat's report files itself as a receipt and asks nothing; a yes is for Memory. Sentinel reads a seat's quote as a quote.
-- **0.6.8** · Oct 13, 2026 · The yes is asked in the chat, one click. A yes that an agent or a script runs is refused.
-- **0.6.7** · Oct 2, 2026 · `magnemo review` labels held and flagged notes. A note Sentinel caught earns its author no trust.
 
 Every release: [CHANGELOG.md](CHANGELOG.md).
 
-**For builders.** Magnemo is an MCP server with four tools — `retrieve`, `stage`,
-`bootpack`, `handoff` — and a CLI for your side: review, promote, reject.
+**For builders.** Magnemo is an MCP server with four verbs — `retrieve`, `stage`,
+`bootpack`, `handoff` — plus `keep`, `drop`, `pending`, and a CLI for your side: review, promote, reject.
 It runs on your machine, in plain markdown files you own. The package imports no network
 module (`magnemo doctor` scans for one on every run); the only traffic is `git push` to a
 backup destination, if you add one. Every promotion is recorded with who wrote the entry,
@@ -106,8 +107,8 @@ One server, said ten ways. Every block below is the same thing: `uvx magnemo-mcp
 the folder your Memory lives in (make one with `magnemo init ./vault`). Tested on this Mac where it says so;
 the rest is from each client's own docs and marked untested — corrections welcome, open an issue.
 
-**Claude Code** — tested: a Claude Code session mounts the server, lists the four tools and calls them, and draws
-the question in the chat (last run Oct 12, 2026: Claude Code 2.1.296, the 0.6.8 server).
+**Claude Code** — tested: a Claude Code session mounts the server, lists the seven tools and calls them; a yes in the
+chat keeps a note, and `pending` reads a body (last run Oct 28, 2026: Claude Code 2.1.309, the 0.6.11 server).
 ```bash
 claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-mcp
 ```
@@ -115,9 +116,22 @@ claude mcp add magnemo -e MAGNEMO_VAULT=/absolute/path/to/vault -- uvx magnemo-m
 Only have the desktop app? `claude` may not be a command in your shell. On a Mac the app keeps its own copy at
 `~/Library/Application Support/Claude/claude-code/<version>/claude.app/Contents/MacOS/claude`; run that in place of `claude`.
 
-**Claude Desktop** — untested end to end here. Download the extension from the latest release —
-[magnemo-0.6.9.mcpb](https://github.com/Magnemo-AI/magnemo/releases/latest) — and open it; Claude Desktop asks for the
-vault folder and does the rest. (The connectors directory listing follows once it is accepted.)
+**Claude Desktop** — untested end to end here. The server this block starts was run the way Claude Desktop starts it
+(Oct 28, 2026, the 0.6.11 server). Claude Desktop → Settings → Developer → Edit Config, then
+`claude_desktop_config.json`. Claude Desktop does not read your shell's PATH, so both paths are absolute: `which uvx`
+prints the first.
+```json
+{
+  "mcpServers": {
+    "magnemo": {
+      "command": "/absolute/path/to/uvx",
+      "args": ["magnemo-mcp"],
+      "env": { "MAGNEMO_VAULT": "/absolute/path/to/vault", "MAGNEMO_AGENT": "claude-desktop" }
+    }
+  }
+}
+```
+Restart Claude Desktop after saving.
 
 **Cursor** — untested here (not installed on this Mac); the link and the block follow Cursor's docs.
 [![Add to Cursor](https://img.shields.io/badge/Cursor-Add_Magnemo-000000?style=flat-square)](cursor://anysphere.cursor-deeplink/mcp/install?name=magnemo&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtYWduZW1vLW1jcCJdLCJlbnYiOnsiTUFHTkVNT19WQVVMVCI6Ii9hYnNvbHV0ZS9wYXRoL3RvL3ZhdWx0In19)
@@ -232,17 +246,17 @@ magnemo doctor          # python, vault, config, ledger, and the mount — scans
 Anything that speaks MCP over stdio mounts the same way. The remote door (ChatGPT and hosted clients) is on its way in 0.7.0.
 
 ## How it works
-**The yes is checked: nothing becomes Memory without a yes, and the engine can tell a person's yes from an agent's.**
+**The yes is checked: nothing becomes Memory without a yes, and the engine can tell a person's yes from an agent's; a yes in the chat counts, and the record says how it was given.**
 
 Magnemo is Memory with a constitution: every fact carries provenance, every agent write waits in your review queue
 before it becomes Memory, and every decision lands in a Trust Ledger.
 
-Your agent gets four verbs. Approving is not one of them.
-The yes is yours: Magnemo asks you in the chat, and your answer never passes through the agent. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) says what that does and does not stop; [docs/MCP.md](docs/MCP.md) has the clients it works in.
+Your agent gets four verbs and cannot keep a note on its own authority; it carries your yes, and the record says so.
+Say yes in the chat and `keep` carries it, ledgered unverified; a click your client draws or a yes at your terminal is a verified one. [KNOWN_LIMITS.md](KNOWN_LIMITS.md) says what that does and does not stop; [docs/MCP.md](docs/MCP.md) has the clients it works in.
 
 | Actor  | Door                | Can do |
 |--------|---------------------|--------|
-| Agents | MCP server (stdio)  | `retrieve` canonical memory · `stage` → **staging only, the one write tool** · `bootpack` on wake · `handoff` at the boundary |
+| Agents | MCP server (stdio)  | `retrieve` canonical memory · `stage` → **staging only, the one write tool** · `bootpack` on wake · `handoff` at the boundary · `keep` / `drop` carry your yes or no · `pending` lists what waits |
 | You    | CLI + git (any editor)| review the queue · **promote / reject** · edit anything · own everything |
 
 **Zero dependencies.** Pure Python standard library, 3.11 or newer. Nothing else to install, nothing to trust but this code.

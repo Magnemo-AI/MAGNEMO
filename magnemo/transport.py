@@ -44,8 +44,8 @@ class Server:
         self.write_partitions = self.vault.resolve_scope(wp.split(",")) or tuple(p.strip() for p in wp.split(",") if p.strip())
         # KAIROS: report review-queue depth at session start (stderr — never
         # pollutes the JSON-RPC channel on stdout).
-        depth = sum(1 for n in self.vault.staged() if n.status == "staged")
-        sys.stderr.write(f"[magnemo] review queue depth: {depth}\n")
+        from . import desk                               # P-106 addendum C · ONE COUNT
+        sys.stderr.write(f"[magnemo] review queue: {desk.count_line(desk.waiting(self.vault))}\n")
 
     def tools_spec(self) -> list:
         """The declared tool surface. The transport declares nothing; the server does."""
@@ -75,6 +75,7 @@ class Server:
         if method == "tools/call":
             p = msg.get("params") or {}
             name = p.get("name", "")
+            name = getattr(self, "TOOL_ALIASES", {}).get(name, name)       # P-106 v3: approve/reject are keep/drop's other names
             args = p.get("arguments") or {}
             # Least privilege: only tools DECLARED by tools_spec() are callable.
             declared = {t["name"] for t in self.tools_spec()}

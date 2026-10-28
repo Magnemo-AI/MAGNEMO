@@ -56,8 +56,8 @@ HUMAN_ONLY = ("promote-canon", "publish")     # keyholder-only forever — hard-
 LEVEL_NAMES = {0: "FROZEN", 1: "PROPOSE", 2: "SUPERVISED", 3: "AUTONOMOUS", 4: "KEYHOLDER"}
 MAX_COMPUTED = 3                              # L4 is never computed; it is held
 EVENT_KINDS = ("success", "verified", "halt", "failure", "denied", "surprise",
-               "violation", "reinstate")
-POSITIVE = ("success", "verified", "halt")
+               "violation", "reinstate", "unverified", "upgraded")
+POSITIVE = ("success", "verified", "halt", "unverified", "upgraded")   # P-106: a yes relayed by the model counts half; its upgrade the rest
 NEGATIVE = ("failure", "denied", "surprise")
 TRUST_EVENT = "trust.event"                   # action_class tag in the ledger
 HUMAN_ONLY_CAP = 1

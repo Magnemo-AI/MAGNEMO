@@ -114,6 +114,8 @@ DEFAULTS = {
             "failure": -1.0,     # rejected / reverted
             "denied": -0.5,      # tried an action a wall refused
             "surprise": -3.0,    # verification failed or deviated from the brief
+            "unverified": 0.5,   # P-106: promoted on a yes the model relayed from the chat (chat-text)
+            "upgraded": 0.5,     # P-106: that yes made verified later (a terminal yes or a pane click)
             # "violation" carries no weight: it is the elevator (reset + freeze);
             # "reinstate" carries no weight: a keyholder lifts the freeze.
         },

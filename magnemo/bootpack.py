@@ -39,7 +39,7 @@ import os
 from .vault import Vault, Note, PARTITIONS, STORES
 from .governance import TrustLedger
 from .config import load_config
-from . import kairos, handoff as _handoff, trust as _trust, gates as _gates
+from . import kairos, desk, handoff as _handoff, trust as _trust, gates as _gates
 
 CLASSES = ("worker", "partner")
 
@@ -146,6 +146,9 @@ def generate(vault: Vault, cls: str = "worker", scope: str | None = None,
 
     L = []
     L.append(f"# BOOT PACK — magnemo · {cls} boot · scope: {scope or 'all'}")
+    L.append("")
+    from .firstline import BOOT_LINE
+    L.append(BOOT_LINE)                              # P-106 addendum B · THE FIRST LINE: a session that boots hears it here too
     L.append("")
     L.append("Read top to bottom. The Charter governs everything below it.")
     from . import chest
@@ -259,11 +262,12 @@ def generate(vault: Vault, cls: str = "worker", scope: str | None = None,
     for n in threads:
         L.append(f"- {n.title} ({n.status}, {n.partition}/{n.store}, `{n.id}`)")
     L.append("")
-    L.append(f"Staged notes awaiting review: {len(staged)}")
-    held = [n for n in staged if n.taint and n.author != "sentinel"]
+    queue = desk.waiting(vault, scope)                    # P-106 addendum C · ONE COUNT: pending and keep all say the same
+    L.append(f"Review queue: {desk.count_line(queue)}")
+    held = [n for n in queue if desk.is_held(n)]
     if held:                                              # P-74b: the alarm, one line, never withheld
         L.append(f"Sentinel held {len(held)} note{'s' if len(held) != 1 else ''} — magnemo review")
-    top = kairos.sorted_queue(staged, int(bp["top_staged"]))
+    top = kairos.sorted_queue(queue, int(bp["top_staged"]))
     if top:
         L.append(f"Top {len(top)} by salience:")
         for i, n in enumerate(top, 1):
@@ -279,7 +283,7 @@ def generate(vault: Vault, cls: str = "worker", scope: str | None = None,
         L.append("*(no boundary recorded yet — hand off at ~90%, do not ride to the wall)*")
     else:
         e = bounds[-1]
-        L.append(f"- boundary: {e.get('ts', '?')} · usage {e.get('usage_pct', 0):g}% · "
+        L.append(f"- boundary: {desk.local(e.get('ts', '?'))} · usage {e.get('usage_pct', 0):g}% · "
                  f"trigger {e.get('trigger', '?')} · by {e.get('actor', '?')}")
         L.append(f"- cut at the boundary: {e.get('cut') or '(nothing declared cut)'}")
         if e.get("note_id"):
@@ -302,7 +306,7 @@ def generate(vault: Vault, cls: str = "worker", scope: str | None = None,
     else:
         for e in entries:
             detail = f"  ({e['detail']})" if e.get("detail") else ""
-            L.append(f"- {e['ts']}  {e['action_class']}  {e['verdict']}  "
+            L.append(f"- {desk.local(e['ts'])}  {e['action_class']}  {e['verdict']}  "
                      f"by {e['actor']} → {e['subject']}{detail}")
     L.append("")
     return "\n".join(L)

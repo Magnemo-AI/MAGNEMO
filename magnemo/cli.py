@@ -12,6 +12,7 @@ here — the asymmetry is the protocol.
   python -m magnemo.cli handoff --report                # every boundary, as a table
   python -m magnemo.cli costs   [<vault-path>]          # foresight counters + baseline
   python -m magnemo.cli stage   TITLE --partition P --store S --source SRC [--body|--file|stdin]  # founder's write path → _staging/
+  python -m magnemo.cli unmount [--file .mcp.json]       # take magnemo and its first line out of a project
   python -m magnemo.cli doctor  [--mount PATH]* [<vault-path>]  # install/mount/vault checkup (P-10)
   python -m magnemo.cli show    <note-id>  [vault]
   python -m magnemo.cli yes [id-fragment | --all] [--by NAME] [--reason TXT] [vault]   # the gate lift is a word (P-54)
@@ -84,13 +85,16 @@ def cmd_review(a):
         sys.exit(2)
     batch = a.batch if a.batch is not None else int(cfg["review"]["batch"])
     queue = kairos.sorted_queue(staged, batch)
-    print(f"\n  MAGNEMO REVIEW QUEUE — depth {len(staged)}, "
-          f"showing top {len(queue)} by salience (batch cap {batch})\n" + "=" * 60)
+    from . import desk
+    others = len(staged) - len([n for n in desk.waiting(g.vault) if n.status == "staged"])
+    print(f"\n  MAGNEMO REVIEW QUEUE — {desk.count_line(desk.waiting(g.vault))}"
+          + (f" (and {others} Sentinel notice{'s' if others != 1 else ''} or handoff record{'s' if others != 1 else ''})" if others else "")
+          + f", showing top {len(queue)} by salience (batch cap {batch})\n" + "=" * 60)
     for n in queue:
         print(f"\n[{n.id}]")
         print(f"  {n.title}")
         print(f"  {_fmt_salience(n)}" + (f" · impact {n.impact}" if n.impact else ""))
-        print(f"  by {n.author} · {n.written} · → {n.partition}/{n.store} · src {n.source}")
+        print(f"  by {n.author} · {desk.local(n.written)} · → {n.partition}/{n.store} · src {n.source}")
         if n.supersedes:
             print(f"  supersedes: {n.supersedes}")
         preview = n.body[:400].replace("\n", "\n  ")
@@ -215,11 +219,19 @@ def _ran_by():
 def cmd_yes(a):
     """THE GATE LIFT IS A WORD (P-54, the two-yes law). `yes` promotes the top of the
     queue; `yes <fragment>` one note; `yes --all` the whole queue, one ledger entry each.
-    Every entry carries ran_by. Promotion stays a CLI verb — never an MCP tool."""
+    Every entry carries ran_by. At a terminal it is a verified yes; on a note kept by a yes in the chat it
+    re-ledgers that yes as verified (P-106 v3). The agent's `keep` carries a chat yes; this verb is never a tool."""
     # `magnemo yes <vault>`: a lone positional that is a directory is the vault, not a fragment
     if a.fragment and a.vault == DEF and os.path.isdir(a.fragment):
         a.vault, a.fragment = a.fragment, ""
     g = _gov(a.vault)
+    if a.fragment and not a.all:                    # P-106 v3 · THE UPGRADE: a note kept by a yes in the chat, now verified
+        kept = [n for n in g.vault.canonical() if n.id == a.fragment or n.id.endswith(a.fragment)]
+        if len(kept) == 1 and (g.last_yes(kept[0].id) or {}).get("verification") == "unverified":
+            by, ran_by = _yes_check(g, a.by, "yes", kept[0].id)[:2]
+            g.upgrade(kept[0].id, by, "terminal", ran_by=ran_by)
+            print(f"✓ VERIFIED {kept[0].id} — kept earlier by a yes in the chat; your terminal yes is on the record now (the first stays) · by {by}")
+            return
     one = _pick(g, a.fragment) if (a.fragment and not a.all) else None
     by, ran_by = _yes_check(g, a.by, "yes", one.id if one else ("the whole queue" if a.all else "the top of the queue"))
     reason = a.reason or "approved in chat"
@@ -349,7 +361,7 @@ def cmd_stage(a):
     n = g.agent_write(title=title, body=body, partition=a.partition,
                       store=a.store, author=author, source=a.source,
                       tags=tags, supersedes=a.supersedes, taint=sv["taint"] or a.taint,
-                      impact=a.impact)
+                      impact=a.impact, contact=sv["contact"])
     foresight.log_cost(g.vault, "stage", len(body.encode("utf-8")), {
         "via": "cli", "id": n.id, "agent": author, "partition": a.partition,
         "store": a.store, "salience": n.salience,
@@ -360,6 +372,8 @@ def cmd_stage(a):
     elif sv["verdict"] == "tainted":
         print(f"TAINTED by Sentinel: an instruction-shaped line (pattern {sv['pattern']}); an ALERT note is staged beside it.")
     print(f"staged: {n.id}")
+    if sv["contact"]:
+        print(f"  {sv['contact']} — kept as written and labelled; the chest asks once per remote before it goes there")
     print(f"  {_fmt_salience(n)}")
     if dup:
         print(f"  possible duplicate of: {dup['id']}")
@@ -615,6 +629,10 @@ def cmd_chest(a):
             print(f"Copy {slot} registered: '{d['label']}' → {d['target']}")
             print("Magnemo will conduct copies here on every promote, receipt, and handoff (and every 10 staged notes,")
             print("or 24h at most). It never holds a copy itself. Every push is swept for secret-shaped text first.")
+            if sys.stdin.isatty():                     # P-106 addendum C rider: the one question, when the remote is added
+                _contacts_grant(a, d["label"])
+            else:
+                print("Notes with contact details: this remote asks once, at the first push that carries one.")
             print("First copy now: magnemo chest push")
         elif a.sub == "status":
             for line in chest.status_lines(a.vault):
@@ -626,12 +644,30 @@ def cmd_chest(a):
                     sys.exit(2)
                 print("SWEEP DISABLED for this push by " + a.by + " — recorded in the ledger.")
             res = chest.push(a.vault, label=a.label, trigger=a.reason, by=a.by, no_sweep=a.no_sweep)
+            asks = [r for r in res if r["status"] == "asks"]
+            if asks:                                   # P-106 addendum C rider: asked once per remote, then never again
+                res = [r for r in res if r["status"] != "asks"]
+                for r in asks:
+                    if _contacts_grant(a, r["destination"], r["notes"]):
+                        res += chest.push(a.vault, label=r["destination"], trigger=a.reason, by=a.by, no_sweep=a.no_sweep)
+                    else:
+                        res.append(r)
             bad = False
             for r in res:
                 print(r["message"])
                 bad = bad or r["status"] != "ok"
             print(chest.gauge(a.vault))
             sys.exit(1 if bad else 0)
+        elif a.sub == "remote":
+            if a.no_contacts:
+                chest.revoke_contacts(a.vault, a.label, a.by or env("AGENT") or "human")
+                print(f"'{a.label}' no longer carries notes with contact details; the next push that has one asks again.")
+            elif a.contacts:
+                if not _contacts_grant(a, a.label):
+                    sys.exit(1)
+            else:
+                for line in chest.status_lines(a.vault):
+                    print(line)
         elif a.sub == "tick":
             res = chest.tick(a.vault)
             print("ceiling reached — copy conducted." if res else "within the ceiling — nothing to do.")
@@ -641,11 +677,41 @@ def cmd_chest(a):
         sys.exit(1)
 
 
+def _contacts_grant(a, label: str, items: list | None = None) -> bool:
+    """P-106 addendum C rider: the once-per-remote question, the person's yes at their own terminal (the yes check).
+    On a yes the remote holds the grant (a receipt on it and in the chest ledger) and never asks again."""
+    from . import chest, yescheck
+    if items:
+        print(f"{len(items)} note{'s' if len(items) != 1 else ''} going to '{label}' {'carry' if len(items) != 1 else 'carries'} "
+              "contact details, kept as written:")
+        for i in items[:8]:
+            print(f"  - \u201c{i['title'][:100]}\u201d ({i['id'][-8:]}) · {i['contact']}")
+        if len(items) > 8:
+            print(f"  - and {len(items) - 8} more")
+    try:
+        who, ran_by = yescheck.check(a.vault, getattr(a, "by", ""))
+    except yescheck.Refused as e:
+        print(f"Not granted. {e.why}. The person answers this once, at their own terminal: magnemo chest remote {label} --contacts")
+        return False
+    try:
+        answer = input(f"'{label}': " + chest.GRANT_QUESTION).strip().lower()
+    except EOFError:
+        answer = ""
+    if answer not in ("y", "yes"):
+        print(f"Not granted: nothing went to '{label}'. It asks again at the next push that carries a note with contact details.")
+        return False
+    chest.grant_contacts(a.vault, label, who, ran_by)
+    print(f"Granted: '{label}' may carry notes with contact details, recorded for {who}. It will not ask again; "
+          f"`magnemo chest remote {label} --no-contacts` takes it back.")
+    return True
+
+
 def cmd_mount(a):
     """Register the magnemo MCP server in a project MCP config (.mcp.json).
     Merges — never clobbers other servers. The one command that makes the
-    mount deterministic: no hand-written env vars, no guessed scopes."""
-    import shutil
+    mount deterministic: no hand-written env vars, no guessed scopes.
+    P-106 addendum B: the command is written as an absolute path, and the file the client reads first gets the
+    first line (CLAUDE.md for Claude Code, .cursor/rules/magnemo.mdc for Cursor)."""
     if getattr(a, "src", ""):
         from . import chest, doctor as _doctor
         try:
@@ -665,15 +731,14 @@ def cmd_mount(a):
         print(f"No vault at {a.vault}. Run: magnemo init")
         sys.exit(1)
     target = a.file
-    cmd = "magnemo-mcp"
-    if shutil.which(cmd) is None:
-        cand = os.path.join(os.path.dirname(sys.executable), "magnemo-mcp")
-        if os.path.isfile(cand):
-            cmd = cand  # venv script not on PATH — pin the absolute path
-        else:
-            print("warning: magnemo-mcp is not on PATH; writing the bare name — "
-                  "your agent must run it from an environment where pip's scripts resolve")
+    cmd, args, how = mcp_command()
+    if cmd is None:
+        print("magnemo-mcp was not found: not beside this Python, not in its scripts folders, not on PATH, and no uvx. "
+              "Install it (pip install magnemo-mcp, or uv tool install magnemo-mcp), then run magnemo mount again; nothing written")
+        sys.exit(1)
     entry = {"command": cmd, "env": {"MAGNEMO_VAULT": os.path.abspath(v.root)}}
+    if args:
+        entry["args"] = args
     if a.agent:
         entry["env"]["MAGNEMO_AGENT"] = a.agent
     data = {}
@@ -687,15 +752,97 @@ def cmd_mount(a):
     servers = data.setdefault("mcpServers", {})
     if servers.get("magnemo") == entry:
         print(f"magnemo already registered in {target} — nothing to do")
-        return
-    servers["magnemo"] = entry
-    with open(target, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    print(f"Registered MCP server 'magnemo' in {target}:")
-    print(json.dumps({"magnemo": entry}, indent=2))
+    else:
+        servers["magnemo"] = entry
+        d = os.path.dirname(os.path.abspath(target))
+        os.makedirs(d, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+        print(f"Registered MCP server 'magnemo' in {target} ({how}):")
+        print(json.dumps({"magnemo": entry}, indent=2))
+    # P-106 addendum B · THE FIRST LINE: the file the client reads first says where this project's Memory is.
+    from . import firstline
+    client, fl = firstline.target_for(target)
+    print()
+    if fl:
+        print(f"The first line ({client} reads {_shown(fl)} first): {firstline.write(fl)}.")
+    else:
+        print("This client reads no project file first. Put these words where it reads its instructions:")
+        print("  " + firstline.FIRST_LINE)
     print()
     print("Verify:  magnemo doctor")
+
+
+def _shown(path: str) -> str:
+    """A path as a person reads it: relative when it is under this folder, absolute otherwise."""
+    r = os.path.relpath(path)
+    return path if r.startswith("..") else r
+
+
+def mcp_command() -> tuple:
+    """(command, args, how) for the MCP config: always an absolute path (P-106 addendum B · THE PATH). A bare name
+    is only found when the client's PATH happens to hold it; a fresh window often does not (Oct 8). In order: the
+    magnemo-mcp beside this Python (the same install), the scripts folders of this Python, PATH, then uvx.
+    (None, [], "") when none is there."""
+    import shutil, sysconfig
+    if _ephemeral():                              # run through uvx: this Python goes away; the config must not point into it
+        uvx = shutil.which("uvx")
+        if uvx:
+            return os.path.abspath(uvx), ["magnemo-mcp"], "uvx, by its absolute path"
+    names = ("magnemo-mcp.exe", "magnemo-mcp") if os.name == "nt" else ("magnemo-mcp",)
+    dirs = [os.path.dirname(sys.executable)]
+    for scheme in (None, f"{os.name}_user", "osx_framework_user" if sys.platform == "darwin" else None):
+        try:
+            dirs.append(sysconfig.get_path("scripts", scheme) if scheme else sysconfig.get_path("scripts"))
+        except KeyError:
+            pass
+    for d in dirs:
+        for n in names:
+            c = os.path.join(d or "", n)
+            if d and os.path.isfile(c) and os.access(c, os.X_OK):
+                return os.path.abspath(c), [], "the magnemo-mcp beside this install, by its absolute path"
+    w = shutil.which("magnemo-mcp")
+    if w:
+        return os.path.abspath(w), [], "the magnemo-mcp on PATH, by its absolute path"
+    uvx = shutil.which("uvx")
+    if uvx:
+        return os.path.abspath(uvx), ["magnemo-mcp"], "uvx, by its absolute path"
+    return None, [], ""
+
+
+def _ephemeral() -> bool:
+    """Is this Python one of uv's throwaway environments (uvx magnemo …)?"""
+    import re
+    return bool(re.search(r"/(archive|builds|environments)-v\d+/", sys.prefix.replace("\\", "/") + "/"))
+
+
+def cmd_unmount(a):
+    """Take magnemo out of a project MCP config, and the first line out of the file the client reads first. Every other
+    server and every other line stays as it was. The vault is not touched."""
+    from . import firstline
+    target = a.file
+    if os.path.isfile(target):
+        try:
+            with open(target, encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"{target} is not valid JSON ({e.msg}) — fix it first; nothing changed")
+            sys.exit(1)
+        if "magnemo" in (data.get("mcpServers") or {}):
+            del data["mcpServers"]["magnemo"]
+            with open(target, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+                f.write("\n")
+            print(f"Removed 'magnemo' from {target}; the other servers there are as they were.")
+        else:
+            print(f"magnemo is not registered in {target}.")
+    else:
+        print(f"No {target} here.")
+    client, fl = firstline.target_for(target)
+    if fl:
+        print(f"The first line in {_shown(fl)}: {firstline.remove(fl)}.")
+    print("The vault is untouched.")
 
 
 def cmd_doctor(a):
@@ -1102,9 +1249,11 @@ def main():
     c = cs.add_parser("add");      c.add_argument("kind", choices=["git", "path"], help="git = a git remote you own · path = a folder you own"); c.add_argument("target"); c.add_argument("--branch", default="main"); c.add_argument("--label", default=""); c.add_argument("vault", nargs="?", default=DEF)
     c = cs.add_parser("status");   c.add_argument("vault", nargs="?", default=DEF)
     c = cs.add_parser("push");     c.add_argument("--reason", default="manual"); c.add_argument("--label", default=None, help="one destination only (default: all)"); c.add_argument("--no-sweep", dest="no_sweep", action="store_true", help="KEYHOLDER ONLY, per push, ledgered: skip the secret sweep"); c.add_argument("--by", default="", help="who is disabling the sweep"); c.add_argument("vault", nargs="?", default=DEF)
+    c = cs.add_parser("remote", help="one remote's grant for notes with contact details (P-106 addendum C)"); c.add_argument("label"); c.add_argument("--contacts", action="store_true", help="grant it (the person, at their own terminal)"); c.add_argument("--no-contacts", dest="no_contacts", action="store_true", help="take the grant back: the next labelled push asks again"); c.add_argument("--by", default=""); c.add_argument("vault", nargs="?", default=DEF)
     c = cs.add_parser("tick");     c.add_argument("vault", nargs="?", default=DEF)
     s.set_defaults(f=cmd_chest)
     s = sub.add_parser("mount");   s.add_argument("--from", dest="src", default="", help="restore a vault from a copy (git URL or folder) into an EMPTY vault path first"); s.add_argument("--file", default=".mcp.json", help="MCP config to write (default: .mcp.json)"); s.add_argument("--agent", default="", help="agent name recorded on this mount (default: server default)"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_mount)
+    s = sub.add_parser("unmount"); s.add_argument("--file", default=".mcp.json", help="MCP config to take magnemo out of (default: .mcp.json)"); s.set_defaults(f=cmd_unmount)
     s = sub.add_parser("doctor");  s.add_argument("--mount", action="append", help="repeatable: a .mcp.json (or its folder) to validate"); s.add_argument("vault", nargs="?", default=DEF); s.set_defaults(f=cmd_doctor)
 
     # Python 3.11's argparse gives a trailing optional positional (the vault) away too early when flags sit

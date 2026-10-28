@@ -49,7 +49,7 @@ class TestPromoteConsumesStaging(unittest.TestCase):
         pack = bootpack.generate(self.v)
         queue_section = pack.split("## OPEN THREADS & REVIEW QUEUE")[1].split("## LAST HANDOFF")[0]
         self.assertNotIn(nid, queue_section)
-        self.assertIn("Staged notes awaiting review: 1", queue_section)
+        self.assertIn("Review queue: 1 waiting · 0 held", queue_section)
         # rescore touches staged notes only
         touched = self.g.rescore()
         self.assertNotIn(nid, [n.id for n in touched])

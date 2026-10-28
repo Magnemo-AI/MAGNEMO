@@ -61,7 +61,7 @@ class TestShape(unittest.TestCase):
         s = mcp.MemoryServer()
         self.assertEqual(s.read_scope, ("doctrine", "state", "missions", "receipts"))
         spec = s.tools_spec()
-        self.assertEqual(len(spec), 4)                                              # the four verbs stand
+        self.assertEqual(len(spec), 7)                                              # the four verbs, keep and drop (P-106 v3), and pending (addendum A)
         stage = next(t for t in spec if t["name"] == "stage")
         def enums(o, key):
             if isinstance(o, dict):
@@ -75,7 +75,7 @@ class TestShape(unittest.TestCase):
         found = list(enums(stage["inputSchema"], "partition"))
         self.assertTrue(found, "stage schema declares no partition enum")
         self.assertEqual(found[0], list(SHAPE))
-        self.assertEqual(len(mcp.tools_spec()), 4)
+        self.assertEqual(len(mcp.tools_spec()), 7)
 
     def test_promote_renders_and_ledgers_prior_hash(self):
         import hashlib

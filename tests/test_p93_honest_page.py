@@ -19,6 +19,8 @@ def prose(text: str) -> str:
     return re.sub(r"`[^`\n]*`", " ", text).replace("![", "[")
 
 
+ASYMMETRY = "Your agent gets four verbs and cannot keep a note on its own authority; it carries your yes, and the record says so."
+
 class TestTheYesIsSaidAsItIs(unittest.TestCase):
     """Until the CLI checks who runs `magnemo yes`, the words say "promotion is not an MCP tool" and nothing stronger."""
 
@@ -32,11 +34,13 @@ class TestTheYesIsSaidAsItIs(unittest.TestCase):
 
     def test_the_limit_is_written_down_where_the_limits_are(self):
         limits = " ".join(read(ROOT, "KNOWN_LIMITS.md").split())
-        self.assertIn("**The yes is yours, and the engine now checks for it.**", limits)
+        self.assertIn("**A yes in the chat counts; the record says how it was given.**", limits)   # P-106 v3
+        self.assertIn("**The terminal yes is checked.**", limits)
         self.assertIn("It is a check on the hand, not a", limits); self.assertNotIn("not checked yet", limits)
-        self.assertIn("Promotion is not an MCP tool", limits)
-        self.assertIn("KNOWN_LIMITS.md", read(ROOT, "README.md").split("Your agent gets four verbs. Approving is not one of them.")[1][:400])
-        self.assertIn("the command line is the other door", read(ROOT, "docs", "MCP.md"))            # the CLI's door is said once, in the manual
+        self.assertIn("cannot keep a note on its own authority: it carries your yes", limits)
+        self.assertIn("a note Sentinel is holding is not kept by it: a hold needs a verified yes", limits)
+        self.assertIn("KNOWN_LIMITS.md", read(ROOT, "README.md").split(ASYMMETRY)[1][:400])
+        self.assertIn("at their own terminal is the verified yes", read(ROOT, "docs", "MCP.md"))      # the CLI's door is said once, in the manual
         self.assertIn("the yes check is a check on the hand, not a credential", read(ROOT, "SECURITY.md"))
         self.assertIn("names a listed person passes — an agent with your shell and your terminal is still you", limits)   # the honest hole, last
 
@@ -48,8 +52,9 @@ class TestTheYesIsSaidAsItIs(unittest.TestCase):
         self.assertIn("def _git_push", read(ROOT, "magnemo", "chest.py"))            # and the push it admits
 
     def test_what_the_mcp_door_does_prove_is_still_said(self):
-        self.assertIn("Your agent gets four verbs. Approving is not one of them.", read(ROOT, "README.md"))
-        self.assertIn("Nothing an agent can call through this server moves a", read(ROOT, "docs", "MCP.md"))
+        self.assertIn(ASYMMETRY, read(ROOT, "README.md"))                                            # P-106 v3 §2.4, the founder's words
+        self.assertIn("**The agent cannot keep a note on its own authority; it carries your yes, and the record says so.**", read(ROOT, "docs", "MCP.md"))
+        self.assertNotIn("Approving is not one of them", read(ROOT, "README.md"))
         self.assertIn("Through the MCP server, agent writes NEVER reach canonical stores directly", read(ROOT, "README.md"))
 
 

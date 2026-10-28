@@ -13,6 +13,17 @@ from . import kairos
 LEDGER_FILE = "trust_ledger.jsonl"
 
 
+def grade(answered_by) -> tuple:
+    """P-106 · THE YES HAS GRADES: (door, verification) from where the answer came.
+    terminal (a TTY and a keyholder), elicitation:<client> (the client drew the question), door-pane:<key> (the review
+    link, clicked) are verified. chat-text:<client> (a person said yes in the chat; the model relayed it) is unverified."""
+    a = (answered_by or "terminal").strip()
+    for door in ("elicitation", "door-pane", "chat-text"):
+        if a.startswith(door + ":") or a == door:
+            return door, ("unverified" if door == "chat-text" else "verified")
+    return "terminal", "verified"
+
+
 class TrustLedger:
     """v0: an append-only record of every governance event, keyed by action
     class. Phase 1 records; the graduation math (L0→L3) reads this file in a
@@ -71,7 +82,7 @@ class Governance:
     def agent_write(self, *, title: str, body: str, partition: str, store: str,
                     author: str, source: str, tags: str = "",
                     supersedes: str = "", taint: str = "",
-                    impact: str = "info") -> Note:
+                    impact: str = "info", contact: str = "") -> Note:
         """The ONLY write path agents get. Always lands in _staging/.
 
         KAIROS (v0.3): salience is computed HERE, at stage time — a
@@ -82,7 +93,11 @@ class Governance:
         TAINT IS HEREDITARY: if this note supersedes (derives from) a tainted
         note, it inherits the taint automatically — only a keyholder clears a
         lineage (cli: cleartaint). Injection cannot launder itself through
-        derivation."""
+        derivation.
+
+        CONTACT IS A LABEL (P-106 addendum C · S14): `contact` is Sentinel's line ("contact details present: email ×1").
+        The note carries it in its frontmatter from the moment it is staged, and the ledger gets one `note.contact`
+        line; the text is kept as written. The chest asks once before a labelled note leaves the machine."""
         self.vault._canonical_dir(partition, store)  # validate target early
         inherited = taint
         if supersedes and not inherited:
@@ -100,9 +115,13 @@ class Governance:
             tags=tags, supersedes=supersedes, taint=inherited,
             impact=impact,
         )
+        if contact:
+            note.extra["contact"] = contact
         cfg = load_config(self.vault.root)
         kairos.apply(note, self.vault.canonical(partition), cfg)
         self.vault.stage(note)
+        if contact:
+            self.ledger.record("note.contact", "labelled", "sentinel", note.id, contact)
         from . import chest
         chest.notify(self.vault, "stage")      # THE CHEST (#129): counts toward the N trigger
         return note
@@ -225,8 +244,34 @@ class Governance:
                                **({"ran_by": ran_by} if ran_by else {}))
         return n
 
+    def last_yes(self, note_id: str):
+        """The ledger line that made this note canon, or None."""
+        for e in reversed(self.ledger.entries()):
+            if e.get("action_class") == "memory.promote" and e.get("subject") == note_id and e.get("verdict") in ("approved", "upgraded"):
+                return e
+        return None
+
+    def upgrade(self, note_id: str, reviewer: str, answered_by: str, ran_by: str | None = None) -> dict:
+        """P-106: a note kept on a yes relayed from the chat, confirmed by a verified yes (a terminal or a pane click):
+        the first approval stays, an `upgraded` line is added, and the author's trust gets the other half."""
+        n = self.vault.read(note_id)
+        last = self.last_yes(note_id)
+        if n.status != "canonical" or not last or last.get("verification") != "unverified":
+            raise ValueError(f"{note_id} has no unverified yes to make verified")
+        door, verification = grade(answered_by)
+        if verification != "verified":
+            raise ValueError("an upgrade needs a verified yes: a terminal or the review link")
+        self.ledger.record("memory.promote", "upgraded", reviewer, note_id, "the chat's yes, now verified",
+                           **({"ran_by": ran_by} if ran_by else {}), answered_by=answered_by, door=door, verification="verified",
+                           first=last.get("answered_by", ""))
+        e = {"note": note_id, "first": last.get("answered_by", ""), "now": answered_by}
+        from . import trust
+        trust.record(self.vault, n.author, "stage", "upgraded", by=reviewer, reason=f"verified the chat's yes on {note_id}", ref=note_id)
+        return e
+
     # ---------------- keyholder-facing (CLI only; never an MCP tool) ----------------
     def promote(self, note_id: str, reviewer: str, reason: str = "", ran_by: str | None = None, answered_by: str | None = None) -> Note:
+        door, verification = grade(answered_by)
         """`ran_by` (P-54, the two-yes law): the yes is the keyholder's (`reviewer`); the hand
         that ran the command is on the record too, as an appended ledger field."""
         note = self.vault.read(note_id)
@@ -252,15 +297,17 @@ class Governance:
         self.vault._place_canonical(note)
         self.ledger.record("memory.promote", "approved", reviewer, note_id, reason,
                            **({"ran_by": ran_by} if ran_by else {}),
-                           **({"answered_by": answered_by} if answered_by else {}))   # the surface the answer came through: elicitation:<client> · terminal
+                           **({"answered_by": answered_by} if answered_by else {}),   # the surface the answer came through: elicitation:<client> · terminal
+                           door=door, verification=verification,                      # P-106: the yes's grade is on the receipt
+                           **({"contact": note.extra["contact"]} if note.extra.get("contact") else {}))   # addendum C: S14's label rides the yes
         self._render(note, reviewer)
         # P-02: a promoted candidate is a verified success for its author in `stage` — unless Sentinel caught it.
         # A secret or an instruction-shaped line that a keyholder read, cleared and kept is a catch, not labor:
         # the note is canon, and its author earns nothing for having staged it (P-39b).
         if "\n> taint 'sentinel:" not in note.body:
             from . import trust
-            trust.record(self.vault, note.author, "stage", "success", by=reviewer,
-                         reason=f"promoted {note_id}" + (f": {reason}" if reason else ""),
+            trust.record(self.vault, note.author, "stage", "success" if verification == "verified" else "unverified", by=reviewer,
+                         reason=f"promoted {note_id}" + (f": {reason}" if reason else "") + ("" if verification == "verified" else " (a yes relayed from the chat)"),
                          ref=note_id)
         from . import chest
         chest.notify(self.vault, "promote")    # THE CHEST (#129): a canon change is a copy event
@@ -312,9 +359,11 @@ class Governance:
         path = os.path.join(self.vault.root, "_staging", f"{note_id}.md")
         with open(path, "w") as f:
             f.write(note.to_markdown())
+        door, verification = grade(answered_by)
         self.ledger.record("memory.promote", "rejected", reviewer, note_id, reason,
                            **({"ran_by": ran_by} if ran_by else {}),
-                           **({"answered_by": answered_by} if answered_by else {}))   # the surface the answer came through: elicitation:<client> · terminal
+                           **({"answered_by": answered_by} if answered_by else {}),   # the surface the answer came through: elicitation:<client> · terminal
+                           door=door, verification=verification)
         # P-02: a rejection is a recorded failure for the author in `stage` — rejections teach.
         from . import trust
         trust.record(self.vault, note.author, "stage", "failure", by=reviewer,

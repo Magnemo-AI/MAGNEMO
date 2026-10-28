@@ -8,7 +8,7 @@ from magnemo.vault import Vault
 from magnemo.governance import Governance, TrustLedger
 from magnemo import yescheck
 
-ROUTE = "Type it yourself in a terminal: magnemo"
+ROUTE = "At their own terminal: magnemo"
 CLEAN = ("MAGNEMO_AGENT", "MEMOS_AGENT", "MAGNEMO_YES_RELAY", "MEMOS_YES_RELAY", "MAGNEMO_MCP_SESSION")
 
 
@@ -60,7 +60,7 @@ class TestTheSixDrills(Case):
         n = self.stage()
         rc, out = self.run_cli("yes", n.id[-8:])                                # an agent's shell: no terminal
         self.assertEqual(rc, 3, out)
-        self.assertEqual(out.strip(), "This yes is yours. Type it yourself in a terminal: magnemo yes %s %s" % (n.id[-8:], self.d))   # the stranger's words, whole
+        self.assertEqual(out.strip(), "This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes %s %s" % (n.id[-8:], self.d))   # the stranger's words, whole
         self.assertEqual(self.status(n), "staged"); self.assertEqual(self.promotions(), [])
         c = self.catches()
         self.assertEqual(len(c), 1)                                             # never silent
@@ -75,7 +75,7 @@ class TestTheSixDrills(Case):
         for terminal in (False, True):                                          # a terminal does not make a seat a person
             rc, out = self.run_cli("yes", n.id[-8:], terminal=terminal, MAGNEMO_AGENT="1")
             self.assertEqual(rc, 3, out); self.assertIn("MAGNEMO_AGENT is set to '1'", out)
-            self.assertTrue(out.strip().endswith("This yes is yours. Type it yourself in a terminal: magnemo yes %s %s" % (n.id[-8:], self.d)), out)
+            self.assertTrue(out.strip().endswith("This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes %s %s" % (n.id[-8:], self.d)), out)
             self.assertEqual(out.strip().count("\n"), 0)                        # one line: the gate, then the route
         rc, out = self.run_cli("yes", n.id[-8:], terminal=True, MAGNEMO_AGENT="founder")
         self.assertEqual(rc, 3, out)                                            # nor does a seat that calls itself the keyholder
@@ -175,7 +175,7 @@ class TestEveryHumanVerb(Case):
 class TestTheMcpSideStaysTheWall(Case):
     def test_promotion_is_still_not_a_tool(self):
         from magnemo import mcp
-        self.assertEqual(mcp.TOOL_NAMES, ("retrieve", "stage", "bootpack", "handoff"))
+        self.assertEqual(mcp.TOOL_NAMES, ("retrieve", "stage", "bootpack", "handoff", "keep", "drop", "pending"))
         self.assertEqual([t["name"] for t in mcp.tools_spec()], list(mcp.TOOL_NAMES))
         for word in ("yes", "promote", "approve", "clear", "reject"):
             self.assertFalse(any(word in t["name"] for t in mcp.tools_spec()), word)
@@ -218,7 +218,7 @@ class TestTheCheckItself(Case):
                          ({"tty": False, "MAGNEMO_YES_RELAY": "founder"}, "relay-no-tty")):
             with self.assertRaises(yescheck.Refused) as cm:
                 self.check(**kw)
-            self.assertEqual(cm.exception.code, code, kw); self.assertIn("Type it yourself in a terminal: magnemo yes <id>", str(cm.exception))
+            self.assertEqual(cm.exception.code, code, kw); self.assertIn("At their own terminal: magnemo yes <id>", str(cm.exception))
         with self.assertRaises(yescheck.Refused) as cm:
             yescheck.check(self.d, "", environ={}, stdin=self.Tty(True), mcp=True)
         self.assertEqual(cm.exception.code, "mcp-session")
@@ -228,12 +228,12 @@ class TestTheCheckItself(Case):
     def test_the_refusal_line_names_the_gate_and_the_route(self):
         """with no terminal, the stranger's words alone; every other refusal keeps its gate and adds the same route."""
         R = yescheck.Refused
-        self.assertEqual(R("no-tty", "stdin is not a terminal").line("yes", ["yes", "40e957bb"]), "This yes is yours. Type it yourself in a terminal: magnemo yes 40e957bb")
-        self.assertEqual(R("no-tty", "x").line("yes", ["yes", "--all"]), "This yes is yours. Type it yourself in a terminal: magnemo yes --all")
-        self.assertEqual(R("no-tty", "x").line("no", ["no", "40e957bb", "--reason", "not true"]), "This no is yours. Type it yourself in a terminal: magnemo no 40e957bb --reason 'not true'")
-        self.assertEqual(R("no-tty", "x").line("clear", ["clear", "40e957bb", "--reason", "read"]), "This clear is yours. Type it yourself in a terminal: magnemo clear 40e957bb --reason read")
+        self.assertEqual(R("no-tty", "stdin is not a terminal").line("yes", ["yes", "40e957bb"]), "This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes 40e957bb")
+        self.assertEqual(R("no-tty", "x").line("yes", ["yes", "--all"]), "This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes --all")
+        self.assertEqual(R("no-tty", "x").line("no", ["no", "40e957bb", "--reason", "not true"]), "This no is the person's. Ask them in the chat: when they say no, drop carries it. At their own terminal: magnemo no 40e957bb --reason 'not true'")
+        self.assertEqual(R("no-tty", "x").line("clear", ["clear", "40e957bb", "--reason", "read"]), "This clear is the keyholder's. At their own terminal: magnemo clear 40e957bb --reason read")
         self.assertEqual(R("seat:cc", "MAGNEMO_AGENT is set to 'cc': a seat ran this, not a person").line("yes", ["yes", "40e957bb"]),
-                         "✗ REFUSED — MAGNEMO_AGENT is set to 'cc': a seat ran this, not a person. This yes is yours. Type it yourself in a terminal: magnemo yes 40e957bb")
+                         "✗ REFUSED — MAGNEMO_AGENT is set to 'cc': a seat ran this, not a person. This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes 40e957bb")
         self.assertEqual(yescheck.route("promote", ["promote", "n1", "--by", "stranger", "--reason=ok"], unlisted=True), "magnemo promote n1 --reason=ok --by <name>")
         self.assertEqual(yescheck.route("yes", ["yes", "--by=stranger", "n1"], unlisted=True), "magnemo yes n1")
         self.assertEqual(yescheck.route("promote", ["promote", "n1", "--by", "founder"]), "magnemo promote n1 --by founder")   # a listed name stays

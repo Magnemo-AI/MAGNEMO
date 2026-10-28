@@ -115,7 +115,7 @@ class TestBootPack(unittest.TestCase):
         pack = bootpack.generate(self.v)
         self.assertIn("Open threads: 1", pack)
         self.assertIn("Open hardening thread", pack)
-        self.assertIn("Staged notes awaiting review: 2", pack)
+        self.assertIn("Review queue: 2 waiting · 0 held", pack)
         # security+audit note outranks the routine info note
         qsec = pack.index("1. [")
         self.assertLess(qsec, pack.index("Routine observation"))
@@ -133,7 +133,7 @@ class TestBootPack(unittest.TestCase):
         self.assertIn("scope: dev", pack)
         self.assertNotIn("Kwik Lube", pack)          # ops canon excluded
         self.assertIn("The SVTech Charter", pack)    # charter is vault-wide
-        self.assertIn("Staged notes awaiting review: 1", pack)
+        self.assertIn("Review queue: 1 waiting · 0 held", pack)
 
     # ---------------- determinism ----------------
     def test_byte_stable_per_class(self):

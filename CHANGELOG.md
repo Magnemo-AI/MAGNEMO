@@ -1,5 +1,66 @@
 # Changelog
 
+## 0.6.11 — THE FIRST LINE
+- **The agent knows where its memory is.** `magnemo mount` writes a short block into the file your client reads
+  first: `CLAUDE.md` for Claude Code, `.cursor/rules/magnemo.mdc` for Cursor. It says this project's Memory is
+  MAGNEMO: call `bootpack` at the start, `retrieve` before answering anything about the project, `stage` each step or
+  decision right then, unasked (one note per step, after a restart too), never stop to ask. The block sits between two marker lines; mounting twice changes nothing, and the new
+  `magnemo unmount` takes it out (and takes magnemo out of `.mcp.json`), leaving every other line and server as it was.
+  The boot pack says the same in one sentence under its title. Claude Desktop reads no such file; `mount` prints the
+  words for you to put where it reads instructions.
+- **A note nobody has kept yet can be read back.** `pending` with a note's id returns that staged note's whole body and
+  where it came from, labelled `staged · not yet Memory`. Before, an agent saw 160 characters of it, and `retrieve`
+  serves Memory only (that stays), so a note left for later was out of an agent's reach. A note Sentinel holds gives
+  its alert, not its body.
+- **The path is absolute.** `mount` writes the full path of the `magnemo-mcp` it finds (the one beside the Python it
+  runs on first), or of `uvx`, never a bare name a fresh window may not find. `doctor` checks the path resolves, and
+  says the fix in one line when it does not.
+- **A contact is kept as written, and labelled.** Sentinel's S14: an email address or a phone number in a staged note
+  stays exactly as written; the note carries a `contact` line ("contact details present: email ×1"), and so does the
+  ledger. Nothing is held and no alert is raised: the note stages and keeps like any other. The question comes where
+  something would leave your computer, once per remote: when you add a chest remote, or at its first push that carries
+  a labelled note, you are asked "This remote may carry notes with contact details? [y/N]". A yes is kept on the remote
+  as a receipt and shown in the gauge (✉); after it, pushes carry labelled notes without asking.
+  `magnemo chest remote <label> --no-contacts` takes it back. Until the yes, a push that carries a labelled note copies
+  nothing and names the notes it asks about; an automatic push asks and returns, and never blocks your agent. An
+  agent's shell cannot answer it. Keys are as before: redacted where they stand, and held.
+- **One count.** The boot pack, `pending` and `keep all` say the same two numbers from the same list: "N waiting · M
+  held". Handoff records and Sentinel's alerts are not counted as notes.
+- **Local time where you read.** Stamps stay UTC in the files and the ledger; the boot pack, `pending` and the review
+  queue show the time of the computer the vault is on, with its offset ("Oct 27, 10:12 PM −07:00").
+- **`doctor` checks only MAGNEMO's own entries.** Another server in `.mcp.json` is listed and left unchecked, never
+  failed.
+- **The tools say what they do.** `stage`: "Remembering means proposing: this stages a note; the person's keep makes
+  it Memory. Contact details are kept as written and labelled; the label is checked once before anything leaves this
+  computer." `keep` names its cap: 50 a day by a yes in the chat, counted in the local day of the computer the vault
+  is on and reset at its midnight (it was the UTC day before), and the two ways past it: `magnemo yes` at your
+  terminal, or the one question your client draws at a pause.
+
+## 0.6.10 — THE EMPTY DESK · THE YES IN THE CHAT
+- **Magnemo never stops your agent to ask.** `stage` asks nothing and waits for nothing, on every transport: it returns
+  one line ("Staged. Say keep when you want it kept.") and the agent keeps working. Before, a client that could draw a
+  question (Claude Code) was asked inside `stage`, and the agent's turn stood still until the person answered or two
+  minutes passed.
+- **The question moves to the pause, once, for everything that waits.** A new read-only tool, `pending`, lists the
+  staged notes nobody has answered and the line to say: "N notes staged since you left. keep all / pick / later." The
+  agent says it at the end of its own turn. On `handoff`, a client that can draw a question asks it once for the
+  batch; Keep all ledgers each note on its own line (`elicitation:<client>`, verified). Later, or no answer, blocks
+  nothing and loses nothing. An answer faster than a person can read (under 300 ms) is refused and logged.
+  `keep` with `"all"` keeps the batch from the chat, one ledger line each.
+- **A yes in the chat counts, and the record says how it was given.** Two new tools, `keep` and `drop` (`approve` and
+  `reject` are their other names), on every transport. You say yes in the chat; the agent calls `keep`; the note is
+  Memory, and the agent says so in one line. The agent cannot keep a note on its own authority: the tool is for a yes
+  you gave in your own words. The ledger line carries `door` and `verification`: a terminal yes and a click your client
+  draws are verified; a yes in the chat is `chat-text:<client> · unverified`, because the engine cannot tell your
+  keyboard from the model's tool call.
+- **Weighed lower, capped, and no hold clears by it.** A yes in the chat counts half in the Trust Ledger (`unverified`,
+  0.5). At most 50 notes a day are kept that way (`chat_keeps_per_day` in `_config/magnemo.json`), so words slipped into
+  a conversation cannot empty the queue into Memory. A note Sentinel is holding stays held with its alert; it needs a
+  verified yes. `magnemo yes <id>` on a note kept in the chat makes it verified, the first yes kept on the record
+  (`upgraded`, the other half).
+- **The refusal line retires.** A yes, no or clear asked of the CLI from an agent's shell now says: ask the person in
+  the chat; when they say yes, `keep` carries it; at their own terminal, `magnemo yes <id>`.
+
 ## 0.6.9 — THE WORTHY YES · A QUOTE IS NOT AN INSTRUCTION
 - **A yes is for Memory.** A report, a sheet, a standup, a watch note or an order dropped through the inbox door by a
   seat on the vault's map (`inbox.seats`) files itself as a **receipt**: `status: receipt`, signed by the seat, on the

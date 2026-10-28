@@ -3,6 +3,10 @@
 Sentinel guards the GATE (stage → canon) and the COPY (chest push). It never
 quotes a matched value back; it names the pattern. S1–S13 are the injection
 shapes an agent's context can carry; a hit taints the note and raises an alert.
+S14 (P-106 addendum C) labels a person's contact: an email address or a phone number in a staged note is kept as
+written, and the note carries a `contact` line ("contact details present: email ×1"), as does the ledger. Nothing is
+held and no alert is raised; the note stages and keeps like any other. The ask is where THE TWO-YES LAW puts it: the
+chest push asks once for a batch that carries labelled notes, and names them.
 
 THE FOUR DOORS (P-74): the chest push (blocks), the inbox (holds a secret, taints an
 injection + an ALERT note), the Room (redacts a secret, taints an injection), and
@@ -191,6 +195,36 @@ def rescore(vault, seat_map: dict) -> list:
     return out
 
 
+# ---------------------------------------------------------------- P-106 addendum C · S14: a person's contact, labelled
+# The Stranger Run's D7: the person's account email went into a note. There is nothing wrong with an email (the founder,
+# Oct 27): it is kept as written. S14 counts what it sees and labels the note; the question is asked only when a
+# labelled note would leave the machine.
+_EMAIL = re.compile(r"(?<![\w.+-])[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,24}(?![\w-])")
+_NOT_A_PERSON = re.compile(r"(?i)^(git|noreply|no-reply)@|@(?:[\w-]+\.)*(example\.(com|org|net)|users\.noreply\.github\.com)$"
+                           r"|\.(example|test|invalid|localhost)$")
+_PHONE = (re.compile(r"(?<![\w.+/-])\+\d{1,3}(?:[ .-]?\(?\d{1,5}\)?){2,5}(?![\w.-]*\d)"),                       # +44 20 7946 0958
+          re.compile(r"(?<![\w.+/-])(?:1[ .-])?(?:\(\d{3}\)[ .-]?|\d{3}[ .-])\d{3}[ .-]\d{4}(?![\w-]|\.\d)"))       # (415) 555-0134, 415-555-0134
+
+
+def contacts(text: str) -> dict:
+    """{"email": n, "phone": n}: how many email addresses and phone numbers the text carries. The text is not changed
+    and the values are never returned."""
+    found = {"email": sum(1 for m in _EMAIL.finditer(text) if not _NOT_A_PERSON.search(m.group(0))), "phone": 0}
+    seen = []
+    for rx in _PHONE:
+        for m in rx.finditer(text):
+            if 10 <= sum(c.isdigit() for c in m.group(0)) <= 15 and not any(a < m.end() and m.start() < b for a, b in seen):
+                seen.append((m.start(), m.end()))
+    found["phone"] = len(seen)
+    return found
+
+
+def contact_label(counts: dict) -> str:
+    """'contact details present: email ×1, phone ×1', or '' when there are none."""
+    parts = [f"{k} ×{counts[k]}" for k in ("email", "phone") if counts.get(k)]
+    return ("contact details present: " + ", ".join(parts)) if parts else ""
+
+
 REDACTED = "[REDACTED by Sentinel on stage: secret-shaped text, pattern {pat}. The value never became a memory.]"
 
 
@@ -211,16 +245,19 @@ def a_door(door: str) -> str:
 
 
 def gate(vault, title: str, body: str, *, partition: str, store: str, source: str, door: str) -> dict:
-    """The stage door's sweep (P-74). Returns {verdict: None|'held'|'tainted', pattern, title, body, taint, alert}.
+    """The stage door's sweep (P-74). Returns {verdict: None|'held'|'tainted', pattern, title, body, taint, alert, contact}.
     A secret: the value never lands — the body is the redaction line (and the title, if it carried the secret).
-    An injection: the text lands as written, tainted, and a Sentinel ALERT note is staged beside it."""
+    An injection: the text lands as written, tainted, and a Sentinel ALERT note is staged beside it.
+    A person's contact (S14): the text lands as written; `contact` is the label line the note and the ledger carry."""
     kind, pat = sweep_text(title + "\n" + body)
-    if kind is None:
-        return {"verdict": None, "pattern": None, "title": title, "body": body, "taint": "", "alert": None}
     if kind == "secret":
         t = title if sweep_text(title)[0] != "secret" else f"Held by Sentinel — secret-shaped text ({pat})"
         return {"verdict": "held", "pattern": pat, "title": t, "body": REDACTED.format(pat=pat),
-                "taint": f"sentinel:secret:{pat}", "alert": None}
+                "taint": f"sentinel:secret:{pat}", "alert": None, "contact": ""}
+    nt, nb = contacts(title), contacts(body)
+    label = contact_label({k: nt[k] + nb[k] for k in nt})
+    if kind is None:
+        return {"verdict": None, "pattern": None, "title": title, "body": body, "taint": "", "alert": None, "contact": label}
     from .vault import Note, now_iso
     taint = f"sentinel:injection:{pat}"
     aid = vault.new_id(f"sentinel alert {door} stage")
@@ -231,5 +268,6 @@ def gate(vault, title: str, body: str, *, partition: str, store: str, source: st
                            f"(pattern **{pat}**). It was staged TAINTED; nothing acts on it; `retrieve` will not serve it "
                            "to an agent. A keyholder reads it, then rejects it or clears the taint "
                            "(`magnemo clear <id> --reason …`).")))
-    return {"verdict": "tainted", "pattern": pat, "title": title, "body": body, "taint": taint, "alert": aid}
+    return {"verdict": "tainted", "pattern": pat, "title": title, "body": body, "taint": taint, "alert": aid,
+            "contact": label}
 

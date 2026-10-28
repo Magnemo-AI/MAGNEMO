@@ -9,15 +9,19 @@ credit you in the release notes if you want that.
 
 ## In scope
 - The engine (`magnemo/`): the CLI, the vault format, the ledgers, the guard, the chest.
-- The MCP server (`magnemo-mcp`): the four tools and the walls around them (staging only, partitions, scope).
+- The MCP server (`magnemo-mcp`): the tools and the walls around them (staging only, partitions, scope; `keep` past a
+  Sentinel hold or past the day's cap is a hole).
 - The vault format itself: anything that lets an agent write past staging, alter the ledger, or launder taint.
 
 ## Out of scope
 - Bugs in the agents or clients that talk to the server (Claude Code, Cursor, Windsurf, Claude Desktop).
 - Anything that needs the keyholder's own hand to go wrong (`magnemo yes` on a bad note is a review problem, not a hole).
 - A process that allocates its own TTY, clears `MAGNEMO_AGENT` and names a listed person to run `magnemo yes`. That is known
-  and written down in `KNOWN_LIMITS.md`: the yes check is a check on the hand, not a credential. Promotion is not an MCP tool,
-  and `magnemo yes` with no TTY (an agent's tool call, a script, a pipe) is refused, with a line in the ledger.
+  and written down in `KNOWN_LIMITS.md`: the yes check is a check on the hand, not a credential. `magnemo yes` with no TTY (an agent's tool call, a script, a
+  pipe) is refused, with a line in the ledger.
+- A model, or a client holding a door key, calling `keep` on a yes the person did not give. The engine cannot see the
+  chat; that is written down in `KNOWN_LIMITS.md`. Such a keep is ledgered unverified, counts half, stops at the cap,
+  and never clears a hold.
 
 ## What we promise about the software
 Zero network calls, zero telemetry, plain files you own — `magnemo doctor` checks the first on every run. If you

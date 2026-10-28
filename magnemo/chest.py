@@ -5,7 +5,13 @@ There is no hosted destination in this module — KINDS is the whole universe
 ("git" = a git remote the user owns · "path" = a folder the user owns), and a
 destination of any other kind is refused by construction. Nothing secret
 leaves the machine: every push is swept by Sentinel first, and a hit BLOCKS
-the push (no auto-redaction — that is a person's judgment). Canon is never
+the push (no auto-redaction — that is a person's judgment). A note Sentinel
+labelled `contact` (S14, P-106 addendum C) travels to a remote only once that
+remote holds the person's grant: asked once per remote, when it is added or at
+its first labelled push ("This remote may carry notes with contact details?"),
+kept as a receipt on the remote, shown in the gauge, revocable
+(`magnemo chest remote <label> --no-contacts`). THE TWO-YES LAW's standing grant:
+what leaves the machine asks once, then it is the agent's. Canon is never
 overwritten by a copy: what another copy changed in canon arrives HERE as a
 proposal in _staging, and a keyholder promotes it.
 
@@ -560,9 +566,17 @@ def _push_one(root: str, dest: dict, trigger: str, sweep_on: bool, by: str) -> d
                                 "queue names the file and the pattern; fix the file, then push again.")}
     else:
         _append(root, {"kind": "CHEST_SWEEP_DISABLED", "destination": label, "trigger": trigger, "by": by or "human"})
+    items = labelled(root, changed)
+    if items and not granted(dest):
+        last = [e for e in entries(root) if e.get("destination") == label]
+        if not last or last[-1].get("kind") != "CHEST_ASKS":          # asked once per remote, not once per push
+            _append(root, {"kind": "CHEST_ASKS", "destination": label, "trigger": trigger,
+                           "notes": [{"id": i["id"], "contact": i["contact"]} for i in items]})
+        return {"destination": label, "status": "asks", "notes": items, "message": ask_words(label, items)}
     thash = tree_hash(snap)
     _append(root, {"kind": "CHEST_PUSH", "destination": label, "trigger": trigger, "files": nfiles,
-                   "sweep": "clean" if sweep_on else "disabled", "hash": thash})
+                   "sweep": "clean" if sweep_on else "disabled", "hash": thash,
+                   **({"contacts": len(items)} if items else {})})
     try:
         if dest["kind"] == "git":
             _git_push(root, dest, trigger, nfiles)
@@ -576,6 +590,76 @@ def _push_one(root: str, dest: dict, trigger: str, sweep_on: bool, by: str) -> d
     _save_manifest(root, label, snap)
     return {"destination": label, "status": "ok", "files": nfiles, "hash": thash,
             "message": f"Copy '{label}' is current — {nfiles} files conducted (trigger: {trigger}, sweep: clean)."}
+
+
+# ---------------------------------------------------------------- P-106 addendum C · contact-labelled notes ask once
+def _frontmatter(path: str) -> dict:
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read(16384)
+    except (OSError, UnicodeDecodeError):
+        return {}
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---", 4)
+    out = {}
+    for line in text[4:end if end > 0 else 0].split("\n"):
+        k, sep, v = line.partition(":")
+        if sep:
+            out[k.strip()] = v.strip()
+    return out
+
+
+def labelled(root: str, rels) -> list:
+    """The notes among `rels` that carry S14's `contact` line: [{"rel", "id", "title", "contact"}], by path."""
+    out = []
+    for rel in sorted(rels):
+        if not rel.endswith(".md"):
+            continue
+        fm = _frontmatter(os.path.join(root, rel))
+        if fm.get("contact"):
+            out.append({"rel": rel, "id": fm.get("id") or os.path.basename(rel)[:-3], "title": fm.get("title", ""),
+                        "contact": fm["contact"]})
+    return out
+
+
+GRANT_QUESTION = "This remote may carry notes with contact details? [y/N] "
+
+
+def granted(dest: dict) -> bool:
+    return bool((dest.get("contacts") or {}).get("granted"))
+
+
+def _set_grant(root: str, label: str, value: bool, by: str, ran_by: str = "") -> dict:
+    cfg = load(root)
+    d = next((x for x in cfg["destinations"] if x["label"] == label), None)
+    if d is None:
+        raise ChestError(f"No destination labelled '{label}'. See `magnemo chest status`.")
+    d["contacts"] = {"granted": value, "by": by, "ts": _now_iso(), **({"ran_by": ran_by} if ran_by else {})}
+    save(root, cfg)
+    _append(root, {"kind": "CHEST_CONTACTS_GRANT" if value else "CHEST_CONTACTS_REVOKED", "destination": label,
+                   "by": by, **({"ran_by": ran_by} if ran_by else {})})
+    return d
+
+
+def grant_contacts(root: str, label: str, by: str, ran_by: str = "") -> dict:
+    """The person's once-per-remote yes: labelled notes may travel to this remote. A receipt on the remote and in the
+    chest ledger. The caller is the one that checks it is the person's (the CLI's yes check)."""
+    return _set_grant(root, label, True, by, ran_by)
+
+
+def revoke_contacts(root: str, label: str, by: str = "") -> dict:
+    """Take the grant back: the next labelled push to this remote asks again."""
+    return _set_grant(root, label, False, by or "human")
+
+
+def ask_words(label: str, items: list) -> str:
+    names = "; ".join(f"\u201c{i['title'][:80]}\u201d ({i['id'][-8:]}, {i['contact'].replace('contact details present: ', '')})"
+                      for i in items[:8]) + (f"; and {len(items) - 8} more" if len(items) > 8 else "")
+    return (f"PUSH ASKS FIRST — {len(items)} note{'s' if len(items) != 1 else ''} in this copy to '{label}' "
+            f"{'carry' if len(items) != 1 else 'carries'} contact "
+            f"details: {names}. Nothing left the machine. This remote has not been told it may carry contact details; "
+            "at your own terminal, `magnemo chest push` asks once for this remote, and after a yes it does not ask again.")
 
 
 def _stage_sentinel_note(root: str, label: str, hits: list) -> None:
@@ -667,6 +751,11 @@ def _age(ts: str) -> str:
     return f"{s // 86400}d"
 
 
+def _local(ts: str) -> str:
+    from .desk import local
+    return local(ts)
+
+
 def gauge(root: str, absolute: bool = False) -> str:
     """One line: `chest: A ✅ · B ✅ 12m · C ⏳ 3 files`. A = this vault; B/C = the copies.
     A missing copy shows `—`, never hidden. `absolute=True` prints the last push
@@ -684,8 +773,12 @@ def gauge(root: str, absolute: bool = False) -> str:
             parts.append(f"{slot} —")
             continue
         d = dests[i]
-        mine = [e for e in ev if e.get("destination") == d["label"] and e.get("kind") in ("CHEST_PUSH", "CHEST_FAIL", "CHEST_BLOCKED")]
+        mine = [e for e in ev if e.get("destination") == d["label"] and e.get("kind") in ("CHEST_PUSH", "CHEST_FAIL", "CHEST_BLOCKED", "CHEST_ASKS")]
         last = mine[-1] if mine else None
+        if last and last["kind"] == "CHEST_ASKS":
+            parts.append(f"{slot} ❔ asks ({len(last.get('notes') or [])} with contact details)")
+            continue
+        mark = " ✉" if granted(d) else ""                 # addendum C rider: the remote carries contact details
         if last and last["kind"] == "CHEST_BLOCKED":
             parts.append(f"{slot} 🔴 blocked")
             continue
@@ -695,11 +788,11 @@ def gauge(root: str, absolute: bool = False) -> str:
         changed, deleted = delta(root, d["label"])
         pending = len(changed) + len(deleted)
         if pending:
-            parts.append(f"{slot} ⏳ {pending} files")
+            parts.append(f"{slot} ⏳ {pending} files{mark}")
         elif last:
-            parts.append(f"{slot} ✅ {last['ts'] if absolute else _age(last['ts'])}")
+            parts.append(f"{slot} ✅ {_local(last['ts']) if absolute else _age(last['ts'])}{mark}")
         else:
-            parts.append(f"{slot} ⏳ never")
+            parts.append(f"{slot} ⏳ never{mark}")
     return "chest: " + " · ".join(parts)
 
 
@@ -713,7 +806,12 @@ def status_lines(root: str) -> list:
         where = d["target"] + (f" (branch {d.get('branch', 'main')})" if d["kind"] == "git" else "")
         lp = last_push_ts(root, d["label"])
         L.append(f"  {slot} · {d['label']} · {d['kind']} → {where}")
-        L.append(f"      last copy: {lp or 'never'} · sweep: sentinel (on every push)")
+        L.append(f"      last copy: {_local(lp) if lp else 'never'} · sweep: sentinel (on every push)")
+        g = d.get("contacts") or {}
+        L.append("      contact details: " + (f"✉ carried (granted by {g.get('by', '?')}, {_local(g.get('ts', ''))}) — "
+                                               f"`magnemo chest remote {d['label']} --no-contacts` takes it back"
+                                               if g.get("granted") else
+                                               "asks once before the first note with contact details goes here"))
     ok, why = verify_chain(root)
     L.append(f"  ledger: {why}")
     return L

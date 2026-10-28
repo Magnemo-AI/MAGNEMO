@@ -110,16 +110,22 @@ def check_mount(results, path):
         return
     if not servers:
         _check(results, WARN, f"mount {name}", "no mcpServers registered")
-    for sname, cfg in servers.items():
+    ours = {k: v for k, v in servers.items() if is_ours(k, v)}
+    for sname in servers:
+        if sname not in ours:          # P-106 addendum B · DOCTOR'S LANE: another server is its owner's to check, not ours
+            _check(results, NOTE, f"mount {name} · {sname}", "not ours, not checked")
+    if servers and not ours:
+        _check(results, WARN, f"mount {name}", "magnemo is not registered here — run: magnemo mount")
+    for sname, cfg in ours.items():
         cmd = cfg.get("command", "")
         env = cfg.get("env", {})
         _LEGACY_SEEN.update(legacy_env_in_use(env))
         problems = []
         if os.path.sep in cmd:
             if not os.path.isfile(cmd):
-                problems.append(f"command missing: {cmd} (renamed folder?)")
+                problems.append(f"command missing: {cmd} (renamed folder?) — fix: magnemo mount (writes the path it finds now)")
             elif not os.access(cmd, os.X_OK):
-                problems.append(f"command not executable: {cmd}")
+                problems.append(f"command not executable: {cmd} — fix: magnemo mount")
         soft = []
         mv = _env("VAULT", "", env)
         if mv and "${" in mv:
@@ -140,8 +146,10 @@ def check_mount(results, path):
         if not _env("VAULT", "", env):
             problems.append("MAGNEMO_VAULT not set — the server requires it")
         import shutil as _sh
-        if os.path.sep not in cmd and _sh.which(cmd) is None:
-            soft.append(f"command not on this shell's PATH: {cmd} — fine if your agent resolves it")
+        if cmd and os.path.sep not in cmd:     # P-106 addendum B · THE PATH: a bare name resolves only on a PATH that holds it
+            w = _sh.which(cmd)
+            soft.append(f"bare command name {cmd!r}" + (f" (this shell finds {w}; a fresh window may not)" if w else
+                        " (not on this shell's PATH)") + " — fix: magnemo mount (writes the absolute path)")
         agent = _env("AGENT", "agent", env)
         walls = _env("PARTITIONS", "all", env)
         if problems:
@@ -150,7 +158,41 @@ def check_mount(results, path):
             _check(results, WARN, f"mount {name} · {sname}", " · ".join(soft))
         else:
             _check(results, OK, f"mount {name} · {sname}",
-                   f"agent={agent} writes={walls}")
+                   f"agent={agent} writes={walls} · {cmd}" + (" " + " ".join(cfg.get("args") or []) if cfg.get("args") else ""))
+    if ours:
+        check_first_line(results, mf)
+
+
+def _shown(path: str) -> str:
+    """A path as a person reads it: relative when it is under this folder, absolute otherwise."""
+    r = os.path.relpath(path)
+    return path if r.startswith("..") else r
+
+
+def is_ours(sname: str, cfg: dict) -> bool:
+    """Is this MCP server entry MAGNEMO's? Its name, its command, or the vault it is handed says so."""
+    if not isinstance(cfg, dict):
+        return False
+    words = [os.path.basename(str(cfg.get("command", "")))] + [str(x) for x in (cfg.get("args") or [])]
+    env = cfg.get("env") or {}
+    return (sname.lower() == "magnemo" or any(w.split("==")[0] in ("magnemo-mcp", "magnemo-mcp.exe") for w in words)
+            or any(k in env for k in ("MAGNEMO_VAULT", LEGACY_ENV_PREFIX + "VAULT")))
+
+
+def check_first_line(results, mount_file):
+    """P-106 addendum B · THE FIRST LINE: the file the client reads first says where this project's Memory is."""
+    from . import firstline
+    client, fl = firstline.target_for(mount_file)
+    if not fl:
+        return
+    if firstline.has_block(fl):
+        _check(results, OK, "first line", f"{_shown(fl)} says this project's Memory is MAGNEMO")
+    elif firstline.has_old_block(fl):
+        _check(results, WARN, "first line", f"{_shown(fl)} has an older first line — fix: magnemo mount (it writes "
+               "the current words in place)")
+    else:
+        _check(results, WARN, "first line", f"{_shown(fl)} does not say where this project's Memory is; "
+               f"{client} may answer from somewhere else — fix: magnemo mount")
 
 
 _LEGACY_SEEN: set = set()

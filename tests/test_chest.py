@@ -3,7 +3,7 @@ import os, sys, json, shutil, tempfile, unittest, subprocess, hashlib
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from magnemo.vault import Vault
 from magnemo.governance import Governance
-from magnemo import chest, doctor, bootpack
+from magnemo import chest, doctor, bootpack, desk
 
 
 def _bare(path):
@@ -108,7 +108,7 @@ class TestTheLaw(unittest.TestCase):
 
     def test_four_verb_server_stays_four(self):
         from magnemo import mcp
-        self.assertEqual(len(mcp.tools_spec()), 4)
+        self.assertEqual(len(mcp.tools_spec()), 7)
 
 
 class TestGauntlet(unittest.TestCase):
@@ -129,7 +129,8 @@ class TestGauntlet(unittest.TestCase):
         res = chest.push(self.A, trigger="manual")
         self.assertEqual([r["status"] for r in res], ["ok", "ok"], res)
         src_sha, src_pack = _pack_sha(self.A)
-        self.assertIn("chest: A ✅ · B ✅ 2026-09-02T00:00:00Z · C ✅ 2026-09-02T00:00:00Z", src_pack.decode())
+        t = desk.local("2026-09-02T00:00:00Z")                        # P-106 addendum C: a person reads local time
+        self.assertIn(f"chest: A ✅ · B ✅ {t} · C ✅ {t}", src_pack.decode())
         shutil.rmtree(self.A)                                        # the disk dies
         R = os.path.join(self.tmp, "restored")
         out = chest.restore(self.remote, R)

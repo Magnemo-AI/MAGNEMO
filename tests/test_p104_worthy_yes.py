@@ -134,7 +134,7 @@ class TestTheReclass(Base):
     def test_a_seat_cannot_run_it(self):
         self.lay()
         rc, out = self.cli("reclass", "--reports-to-receipts", "--reason", "x", agent="cc", typed="reclass 4")
-        self.assertEqual(rc, 3, out); self.assertIn("This reclass is yours. Type it yourself in a terminal", out)
+        self.assertEqual(rc, 3, out); self.assertIn("This reclass is the keyholder's. At their own terminal", out)
         rc, out = self.cli("reclass", "--reports-to-receipts", "--reason", "x")
         self.assertEqual(rc, 3, out)
         self.assertTrue(all(self.v.read(i).status == "staged" for i in self.reports))

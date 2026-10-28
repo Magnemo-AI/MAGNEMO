@@ -28,7 +28,8 @@ from .config import env, load_config
 
 REFUSED = "judgment.refused"                        # the trust ledger's action class for a yes the engine turned away
 SESSION_VAR = "MAGNEMO_MCP_SESSION"                 # set by the MCP server in its own process; its children inherit it
-ROUTE = "Type it yourself in a terminal:"         # every refusal ends with this and the command to type
+ROUTE = "At their own terminal:"                  # P-106 v3: the terminal is the keyholder's spare, never the first word
+CHAT_VERBS = ("yes", "promote", "review", "no", "reject")   # a yes or a no: the person gives it in the chat
 YOURS = {"yes": "yes", "promote": "yes", "review": "yes", "no": "no", "reject": "no", "clear": "clear", "cleartaint": "clear", "reclass": "reclass"}
 VERBS = ("yes", "no", "clear", "promote", "reject", "cleartaint", "review", "reclass")
 # A process IS the server when the program it runs is: `magnemo-mcp`, `python -m magnemo.mcp`, `magnemo serve`, or
@@ -70,7 +71,12 @@ class Refused(Exception):
 
     def line(self, verb: str = "yes", argv=None) -> str:
         unlisted = self.code.startswith(("not-a-keyholder:", "relay-names-another:"))
-        yours = "This %s is yours. %s %s" % (YOURS.get(verb, "yes"), ROUTE, route(verb, argv, unlisted))
+        if verb in CHAT_VERBS:                     # P-106 v3: the yes in the chat counts; the agent carries it, the record says so
+            word = "no" if YOURS.get(verb) == "no" else "yes"
+            yours = ("This %s is the person's. Ask them in the chat: when they say %s, %s carries it. %s %s"
+                     % (word, word, "drop" if word == "no" else "keep", ROUTE, route(verb, argv, unlisted)))
+        else:
+            yours = "This %s is the keyholder's. %s %s" % (YOURS.get(verb, verb), ROUTE, route(verb, argv, unlisted))
         if self.code == "no-tty":                  # the plain case, in the stranger's words: an agent, a script, a pipe
             return yours
         return "✗ REFUSED — %s. %s" % (self.why, yours)

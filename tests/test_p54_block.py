@@ -36,7 +36,7 @@ class TestTheDoor(unittest.TestCase):
         n = Vault(self.tmp).read(nid)
         self.assertEqual(n.author, "agent")
         self.assertEqual(n.extra.get("claimed_author"), "cc-2")
-        self.assertIn("magnemo yes", json.loads(text)["note"])
+        self.assertEqual(json.loads(text)["say"], "Staged. Say keep when you want it kept.")   # P-106 addendum A: stage never waits
     def test_the_seat_signs_as_itself_without_a_claim(self):
         text, err = call(self.s, "stage", note={"title": "t3", "body": "b3", "partition": "dev", "store": "knowledge"},
                          provenance={"source": "drill-D1"})
@@ -65,7 +65,7 @@ class TestTheWord(unittest.TestCase):
         return [e for e in Governance(Vault(self.tmp)).ledger.entries("memory.promote")]
     def test_yes_promotes_the_top_with_the_seat_on_the_record(self):
         rc, out = run_cli(["yes", self.tmp], env={"MAGNEMO_AGENT": "agent"})
-        self.assertEqual(rc, 3, out); self.assertIn("This yes is yours. Type it yourself in a terminal: magnemo yes", out)   # P-97: a seat's yes is refused
+        self.assertEqual(rc, 3, out); self.assertIn("This yes is the person's. Ask them in the chat: when they say yes, keep carries it. At their own terminal: magnemo yes", out)   # P-97: a seat's yes is refused
         self.assertEqual(self._promotions(), [])
         rc, out = run_cli(["yes", self.tmp], env={"MAGNEMO_AGENT": "agent", "MAGNEMO_YES_RELAY": "founder"})        # the one override: a relay, said as a relay
         self.assertEqual(rc, 0, out); self.assertIn("PROMOTED", out)
@@ -107,7 +107,7 @@ class TestTheWord(unittest.TestCase):
 class TestTheCount(unittest.TestCase):
     """D3: the four tools stay four; `yes` is never a tool."""
     def test_tool_names_are_the_four(self):
-        self.assertEqual(mcp.TOOL_NAMES, ("retrieve", "stage", "bootpack", "handoff"))
+        self.assertEqual(mcp.TOOL_NAMES, ("retrieve", "stage", "bootpack", "handoff", "keep", "drop", "pending"))
         self.assertEqual([t["name"] for t in mcp.tools_spec()], list(mcp.TOOL_NAMES))
     def test_the_boot_line_reports_the_queue(self):
         tmp = tempfile.mkdtemp(); Vault(tmp).init()
@@ -116,7 +116,7 @@ class TestTheCount(unittest.TestCase):
             err = io.StringIO()
             with contextlib.redirect_stderr(err):
                 make_server(tmp, MAGNEMO_AGENT="agent")
-            self.assertIn("queue=1", err.getvalue())
+            self.assertIn("waiting=1 held=0", err.getvalue())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
