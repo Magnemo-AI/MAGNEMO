@@ -3,7 +3,7 @@
   "name": "ai.magnemo/magnemo",
   "title": "MAGNEMO",
   "description": "Persistent Memory for AI Agents, in plain local files. No network calls of its own.",
-  "version": "0.6.11",
+  "version": "0.6.11.post1",
   "websiteUrl": "https://magnemo.ai",
   "repository": {
     "url": "https://github.com/magnemo-ai/magnemo",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "magnemo-mcp",
-      "version": "0.6.11",
+      "version": "0.6.11.post1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
