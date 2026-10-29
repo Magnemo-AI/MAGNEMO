@@ -23,7 +23,7 @@ PROTOCOL_FALLBACK = "2025-06-18"
 # The protocol revisions this server speaks, newest first. A client that asks for one of them gets it; a client that
 # asks for any other (a newer one) is answered with the newest of these, and decides for itself, as the protocol says.
 PROTOCOLS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
-SERVER_INFO = {"name": "magnemo", "title": "Magnemo — governed memory for AI agents", "version": __version__}
+SERVER_INFO = {"name": "magnemo", "title": "MAGNEMO — Persistent Memory for AI Agents", "version": __version__}
 
 
 class Server:

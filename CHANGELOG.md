@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.11.post1 — THE DOORS CATCH UP
+- **The words on PyPI say what the engine does.** The project page is the README as it reads on GitHub: your agent
+  writes one line down and keeps working; say keep, and it is Memory. The summary is "Persistent Memory for AI agents,
+  in plain local files. Nothing becomes Memory until you approve it. No network calls of its own."
+- **The server's title is "MAGNEMO — Persistent Memory for AI Agents"**, the name every client shows. Nothing else in
+  the engine changed.
+
 ## 0.6.11 — THE FIRST LINE
 - **The agent knows where its memory is.** `magnemo mount` writes a short block into the file your client reads
   first: `CLAUDE.md` for Claude Code, `.cursor/rules/magnemo.mdc` for Cursor. It says this project's Memory is
